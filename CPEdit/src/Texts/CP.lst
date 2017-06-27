@@ -1,0 +1,82 @@
+Listing:
+
+   1 MODULE TextsCP;
+   2 
+   3 
+   4 IMPORT RTS,Console,texts;
+**** -------------------^ Cannot open symbol file
+**** Filename <texts.cps>
+   5 
+   6 TYPE Reader* =RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; jReader:texts.Texts;END;
+**** Identifier not known in qualified scope-------------------------------------^
+   7          Writer*= RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; END;
+   8         
+   9          
+  10 
+  11 PROCEDURE  WriteString*(W:Writer; Str:ARRAY OF CHAR ); 
+  12 
+  13 BEGIN
+  14         Console.WriteString(Str);
+  15 END WriteString;
+  16 
+  17 PROCEDURE  WriteStringLn*(Str:ARRAY OF CHAR ); 
+  18 
+  19 BEGIN
+  20         Console.WriteString(Str);
+  21         Console.WriteLn();      
+  22 END WriteStringLn;
+  23 
+  24 PROCEDURE WriteInt*(W:Writer; pos:INTEGER; len:INTEGER); 
+  25 BEGIN
+  26         Console.WriteInt(pos,len);
+  27 END WriteInt;
+  28 
+  29 PROCEDURE WriteLn*(W:Writer); 
+  30 BEGIN
+  31         Console.WriteLn();
+  32 END WriteLn;
+  33 
+  34 PROCEDURE OpenWriter*(W:Writer);
+  35 BEGIN
+  36         W.eot:=FALSE;
+  37         Console.WriteString("OpenWriter");Console.WriteLn();
+  38 END OpenWriter;
+  39 
+  40 
+  41 PROCEDURE Pos*(R:Reader):INTEGER;
+  42 BEGIN
+  43         RETURN 0;
+  44 END Pos;
+  45 
+  46 PROCEDURE OpenReader*(VAR R:Reader);
+  47 BEGIN
+  48         Console.WriteString("OpenReader "+R.filename);Console.WriteLn();
+  49         NEW(R.jReader); 
+  50         R.jReader.open(MKSTR(R.filename));R.eot:=FALSE;
+  51 END OpenReader;
+  52 
+  53 PROCEDURE Read*(VAR R:Reader;VAR ch:CHAR);
+  54 BEGIN   
+  55                 (* eof error *)
+  56                 IF R.jReader.eot THEN 
+  57                         Console.WriteString("Texts.Read EOF error for file: "+R.filename);
+  58                         RTS.Throw("Texts.Read EOF error");
+  59                 ELSE
+  60                         ch:=R.jReader.read();
+  61                         Console.Write(ch);
+  62                         IF (ch=0DX) OR (ch=0AX) THEN ch:=' ';END;
+  63                         IF R.jReader.eot THEN 
+  64                                 R.eot:=TRUE;    
+  65                                 WriteStringLn("Texts.Read eot set true");
+  66                         END;
+  67                 END;
+  68 END Read;
+  69 
+  70 
+  71 BEGIN (*Auto-generated*)
+  72         
+  73 END TextsCP.
+
+There were:  2 errors, and No warnings
+
+
