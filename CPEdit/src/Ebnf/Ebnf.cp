@@ -307,7 +307,7 @@ VAR res:BOOLEAN; pos:INTEGER;
 	
 		VAR index:INTEGER;ch:CHAR;testChar:CHAR;testBool:BOOLEAN;
 	
-		(* TODO Regex*)
+		(*          *)
 		BEGIN
 			Console.WriteString("parse.match Start pos: ");
 			Console.WriteInt(txt.getTextPos(),2);
@@ -428,7 +428,7 @@ BEGIN (*Auto-generated*)
 			txt.readText("lexikon.txt");
 			Console.WriteString("nach txt.readText");Console.WriteLn();		
 		END;
-		IF parse(list.entry(*before: list onl<*)) THEN
+		IF parse(list.entry(* before: list only *)) THEN
 			Console.WriteString(" parse ok")
 		ELSE Console.WriteString(" parse failed");
 		END;

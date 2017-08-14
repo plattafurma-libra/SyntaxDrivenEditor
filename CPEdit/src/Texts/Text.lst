@@ -1,0 +1,689 @@
+Listing:
+
+   1 MODULE TextsText;
+   2 
+   3 (* JR from BB A character of a text has several attributes: 
+   4 font, color, and vertical offset. The font attribute consists of the 
+   5 font's typeface (e.g., Times), its size (e.g., 9 point), its weight (e.g., bold), 
+   6 and its style (e.g., italic, underlined, or strikeout). 
+   7 Vertical offsets such as superscripts or subscripts can be selected....,
+   8 the other attributes can be selected with the Attributes menu
+   9 *)
+  10 
+  11 IMPORT (*Files,*) FontsFont,Console,texts;
+  12 
+  13 TYPE  CONST (*scanner symbol classes*)
+  14     Inval* = 0;         (*invalid symbol*)
+  15     Name* = 1;          (*name s (length len)*)
+  16     String* = 2;        (*literal string s (length len)*)
+  17     Int* = 3;           (*integer i (decimal or hexadecimal)*)
+  18     Real* = 4;          (*real number x*)
+  19     Char* = 6;          (*special character c*)
+  20 
+  21     (* TextBlock = TextTag "1" offset run {run} "0" len {AsciiCode}.
+  22       run = fnt [name] col voff len. *)
+  23 
+  24     TAB = 9X; CR = 0DX; maxD = 9;
+  25     TextTag = 0F1X;
+  26     replace* = 0; insert* = 1; delete* = 2; unmark* = 3;  (*op-codes*)
+  27 
+  28   TYPE Piece = POINTER TO PieceDesc;
+  29     PieceDesc = RECORD
+  30      (*JR f: Files.File;*)
+  31       off, len: LONGINT;
+  32       fnt:FontsFont.Font;
+  33       col, voff: INTEGER;
+  34       prev, next: Piece
+  35     END;
+  36 
+  37 
+  38 
+  39 
+  40 
+  41         Text* = POINTER TO RECORD
+  42       len*: LONGINT;
+  43       changed*: BOOLEAN;
+  44       notify*: Notifier;
+  45       trailer: Piece (* points to sentinel in piece list *);
+  46       pce: Piece;  (*cache*)
+  47       org: LONGINT; (*cache*)
+  48     END;
+  49 
+  50         Notifier* = PROCEDURE (T: Text; op: INTEGER; beg, end: LONGINT);
+  51 
+  52     Reader* = (*JR*) POINTER TO EXTENSIBLE RECORD
+  53       eot*: BOOLEAN;
+  54       fnt*: FontsFont.Font;
+  55       col*, voff*: INTEGER;
+  56       ref: Piece;
+  57       org: LONGINT;
+  58       off: LONGINT;
+  59       (* JR rider: Files.Rider *)
+  60     END;
+  61 
+  62     Scanner* = RECORD (Reader)
+  63       nextCh*: CHAR;
+  64       line*, class*: INTEGER;
+  65       i*: LONGINT;
+  66       x*: REAL;
+  67       y*: REAL;
+  68       c*: CHAR;
+  69       len*: INTEGER;
+  70       s*: ARRAY 32 OF CHAR
+  71     END;
+  72 
+  73     Buffer* = POINTER TO BufDesc;
+  74     BufDesc* = RECORD
+  75       len*: LONGINT;
+  76       header, last: Piece
+  77     END;
+  78 
+  79     Writer* = RECORD
+  80       buf*: Buffer;
+  81       fnt*: FontsFont.Font;
+  82       col*, voff*: INTEGER;
+  83       (* JR rider: Files.Rider *)
+  84     END;     
+  85 
+  86 
+  87 
+  88 
+  89         PROCEDURE Check*():Text;
+  90         
+  91         VAR t:Text;piece,sentinel,newPiece:Piece;i:INTEGER;
+  92         
+  93                 PROCEDURE InsertPiece(newPiece,oldPiece:Piece);
+  94                 BEGIN
+  95                         newPiece.prev:=oldPiece;oldPiece.next:=newPiece;
+  96                                         
+  97                 END InsertPiece;
+  98                 
+  99                 PROCEDURE TraversPieceTableForCheck(t:Text);
+ 100                 VAR piece:Piece;i:INTEGER;
+ 101                 BEGIN
+ 102                         Console.WriteString("TraversPieceTableForCheck");
+ 103                         Console.WriteLn();
+ 104                         piece:=t.trailer;
+ 105                         REPEAT
+ 106                                 Console.WriteString(" piece: "); 
+ 107                                 
+ 108                                 Console.WriteString(Text.convertLongIntToCharArray(piece.off));
+**** Identifier is not a fieldname of the current type--------^
+**** Current type was <Text>
+ 109                                 Console.WriteLn();
+ 110                                 piece:=piece.next;
+ 111                         UNTIL piece=t.trailer;
+ 112                                 
+ 113                 
+ 114                 END TraversPieceTableForCheck;
+ 115         
+ 116         BEGIN
+ 117                 Console.WriteString("check entry");
+ 118                 Console.WriteLn();
+ 119                 NEW(t);
+ 120                 NEW(sentinel);
+ 121                 sentinel.off:=0;sentinel.len:=1; sentinel.next:=sentinel;sentinel.prev:=sentinel;
+ 122                 sentinel.voff:=-1;
+ 123                 t.trailer:=sentinel;
+ 124                 piece:=sentinel;
+ 125                 FOR i:=0 TO 3 DO
+ 126                         Console.WriteString("check make pieces Nr: ");
+ 127                         Console.WriteInt(i,3);
+ 128                         Console.WriteLn();
+ 129                         NEW(newPiece);
+ 130                         newPiece.off:=i; (* this is only for check, no sense !!! for further devellopment *)
+ 131                         newPiece.next:=sentinel;
+ 132                         InsertPiece(newPiece,piece);
+ 133                         piece:=newPiece;
+ 134                 END;
+ 135                 sentinel.prev:=piece;
+ 136                 TraversPieceTableForCheck(t);
+ 137                 RETURN t;
+ 138         END Check;
+ 139 
+ 140 BEGIN (*Auto-generated*)
+ 141         
+ 142 
+ 143 END TextsText.
+ 144 
+ 145 (************************************************************************************************************************
+ 146 MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 20.3.2017*)
+ 147   IMPORT Files, Fonts;
+ 148 
+ 149   CONST (*scanner symbol classes*)
+ 150     Inval* = 0;         (*invalid symbol*)
+ 151     Name* = 1;          (*name s (length len)*)
+ 152     String* = 2;        (*literal string s (length len)*)
+ 153     Int* = 3;           (*integer i (decimal or hexadecimal)*)
+ 154     Real* = 4;          (*real number x*)
+ 155     Char* = 6;          (*special character c*)
+ 156 
+ 157     (* TextBlock = TextTag "1" offset run {run} "0" len {AsciiCode}.
+ 158       run = fnt [name] col voff len. *)
+ 159 
+ 160     TAB = 9X; CR = 0DX; maxD = 9;
+ 161     TextTag = 0F1X;
+ 162     replace* = 0; insert* = 1; delete* = 2; unmark* = 3;  (*op-codes*)
+ 163 
+ 164 
+ 165   TYPE Piece = POINTER TO PieceDesc;
+ 166     PieceDesc = RECORD
+ 167       f: Files.File;
+ 168       off, len: LONGINT;
+ 169       fnt: FontsFont.Font;
+ 170       col, voff: INTEGER;
+ 171       prev, next: Piece
+ 172     END;
+ 173 
+ 174     Text* = POINTER TO TextDesc;
+ 175     Notifier* = PROCEDURE (T: Text; op: INTEGER; beg, end: LONGINT);
+ 176     TextDesc* = RECORD
+ 177       len*: LONGINT;
+ 178       changed*: BOOLEAN;
+ 179       notify*: Notifier;
+ 180       trailer: Piece;
+ 181       pce: Piece;  (*cache*)
+ 182       org: LONGINT; (*cache*)
+ 183     END;
+ 184 
+ 185     Reader* = RECORD
+ 186       eot*: BOOLEAN;
+ 187       fnt*: Fonts.Font;
+ 188       col*, voff*: INTEGER;
+ 189       ref: Piece;
+ 190       org: LONGINT;
+ 191       off: LONGINT;
+ 192       rider: Files.Rider
+ 193     END;
+ 194 
+ 195     Scanner* = RECORD (Reader)
+ 196       nextCh*: CHAR;
+ 197       line*, class*: INTEGER;
+ 198       i*: LONGINT;
+ 199       x*: REAL;
+ 200       y*: LONGREAL;
+ 201       c*: CHAR;
+ 202       len*: INTEGER;
+ 203       s*: ARRAY 32 OF CHAR
+ 204     END;
+ 205 
+ 206     Buffer* = POINTER TO BufDesc;
+ 207     BufDesc* = RECORD
+ 208       len*: LONGINT;
+ 209       header, last: Piece
+ 210     END;
+ 211 
+ 212     Writer* = RECORD
+ 213       buf*: Buffer;
+ 214       fnt*: Fonts.Font;
+ 215       col*, voff*: INTEGER;
+ 216       rider: Files.Rider
+ 217     END;     
+ 218 
+ 219   VAR TrailerFile: Files.File;
+ 220 
+ 221   (* -------------------- Filing ------------------------*)
+ 222 
+ 223   PROCEDURE Trailer(): Piece;
+ 224     VAR Q: Piece;
+ 225   BEGIN NEW(Q);
+ 226     Q.f := TrailerFile; Q.off := -1; Q.len := 1; Q.fnt := NIL; Q.col := 0; Q.voff := 0; RETURN Q
+ 227   END Trailer;
+ 228 
+ 229   PROCEDURE Load* (VAR R: Files.Rider; T: Text);
+ 230     VAR Q, q, p: Piece;
+ 231       off: LONGINT;
+ 232       N, fno: INTEGER; bt: BYTE;
+ 233       f: Files.File;
+ 234       FName: ARRAY 32 OF CHAR;
+ 235       Dict: ARRAY 32 OF Fonts.Font;
+ 236   BEGIN f := Files.Base(R); N := 1; Q := Trailer(); p := Q;
+ 237     Files.ReadInt(R, off); Files.ReadByte(R, bt); fno := bt;
+ 238     WHILE fno # 0 DO
+ 239       IF fno = N THEN
+ 240         Files.ReadString(R, FName);
+ 241         Dict[N] := Fonts.This(FName); INC(N)
+ 242       END;
+ 243       NEW(q); q.fnt := Dict[fno];
+ 244       Files.ReadByte(R, bt); q.col := bt;
+ 245       Files.ReadByte(R, bt); q.voff := ASR(LSL(bt, -24), 24);
+ 246       Files.ReadInt(R, q.len);
+ 247       Files.ReadByte(R, bt); fno := bt;
+ 248       q.f := f; q.off := off; off := off + q.len;
+ 249       p.next := q; q.prev := p; p := q
+ 250     END;
+ 251     p.next := Q; Q.prev := p;
+ 252     T.trailer := Q; Files.ReadInt(R, T.len); (*Files.Set(R, f, Files.Pos(R) + T.len)*)
+ 253   END Load;
+ 254 
+ 255   PROCEDURE Open* (T: Text; name: ARRAY OF CHAR);
+ 256     VAR f: Files.File; R: Files.Rider; Q, q: Piece;
+ 257       tag: CHAR; len: LONGINT;
+ 258   BEGIN f := Files.Old(name);
+ 259     IF f # NIL THEN
+ 260       Files.Set(R, f, 0); Files.Read(R, tag); 
+ 261       IF tag = TextTag THEN Load(R, T)
+ 262       ELSE (*Ascii file*)
+ 263         len := Files.Length(f); Q := Trailer();
+ 264         NEW(q); q.fnt := Fonts.Default; q.col := 1; q.voff := 0; q.f := f; q.off := 0; q.len := len;
+ 265         Q.next := q; q.prev := Q; q.next := Q; Q.prev := q; T.trailer := Q; T.len := len
+ 266       END
+ 267     ELSE (*create new text*)
+ 268       Q := Trailer(); Q.next := Q; Q.prev := Q; T.trailer := Q; T.len := 0
+ 269     END ;
+ 270     T.changed := FALSE; T.org := -1; T.pce := T.trailer (*init cache*)
+ 271   END Open;
+ 272 
+ 273   PROCEDURE Store* (VAR W: Files.Rider; T: Text);
+ 274     VAR p, q: Piece;
+ 275       R: Files.Rider;
+ 276       off, rlen, pos: LONGINT;
+ 277       N, n: INTEGER;
+ 278       ch: CHAR;
+ 279       Dict: ARRAY 32, 32 OF CHAR;
+ 280   BEGIN pos := Files.Pos(W); Files.WriteInt(W, 0); (*place holder*)
+ 281     N := 1; p := T.trailer.next;
+ 282     WHILE p # T.trailer DO
+ 283       rlen := p.len; q := p.next;
+ 284       WHILE (q # T.trailer) & (q.fnt = p.fnt) & (q.col = p.col) & (q.voff = p.voff) DO
+ 285         rlen := rlen + q.len; q := q.next
+ 286       END;
+ 287       Dict[N] := p.fnt.name;
+ 288       n := 1;
+ 289       WHILE Dict[n] # p.fnt.name DO INC(n) END;
+ 290       Files.WriteByte(W, n);
+ 291       IF n = N THEN Files.WriteString(W, p.fnt.name); INC(N) END;
+ 292       Files.WriteByte(W, p.col); Files.WriteByte(W, p.voff); Files.WriteInt(W, rlen);
+ 293       p := q
+ 294     END;
+ 295     Files.WriteByte(W, 0); Files.WriteInt(W, T.len);
+ 296     off := Files.Pos(W); p := T.trailer.next;
+ 297     WHILE p # T.trailer DO
+ 298       rlen := p.len; Files.Set(R, p.f, p.off);
+ 299       WHILE rlen > 0 DO Files.Read(R, ch); Files.Write(W, ch); DEC(rlen) END ;
+ 300       p := p.next
+ 301     END ;
+ 302     Files.Set(W, Files.Base(W), pos); Files.WriteInt(W, off); (*fixup*)
+ 303     T.changed := FALSE;
+ 304     IF T.notify # NIL THEN T.notify(T, unmark, 0, 0) END
+ 305   END Store;
+ 306 
+ 307   PROCEDURE Close*(T: Text; name: ARRAY OF CHAR);
+ 308     VAR f: Files.File; w: Files.Rider;
+ 309   BEGIN f := Files.New(name); Files.Set(w, f, 0);
+ 310     Files.Write(w, TextTag); Store(w, T); Files.Register(f)
+ 311   END Close;
+ 312 
+ 313   (* -------------------- Editing ----------------------- *)
+ 314 
+ 315   PROCEDURE OpenBuf* (B: Buffer);
+ 316   BEGIN NEW(B.header); (*null piece*)
+ 317     B.last := B.header; B.len := 0
+ 318   END OpenBuf;
+ 319 
+ 320   PROCEDURE FindPiece (T: Text; pos: LONGINT; VAR org: LONGINT; VAR pce: Piece);
+ 321     VAR p: Piece; porg: LONGINT;
+ 322   BEGIN p := T.pce; porg := T.org;
+ 323     IF pos >= porg THEN
+ 324       WHILE pos >= porg + p.len DO INC(porg, p.len); p := p.next END
+ 325     ELSE p := p.prev; DEC(porg, p.len);
+ 326       WHILE pos < porg DO p := p.prev; DEC(porg, p.len) END
+ 327     END ;
+ 328     T.pce := p; T.org := porg;  (*update cache*)
+ 329     pce := p; org := porg
+ 330   END FindPiece;
+ 331 
+ 332   PROCEDURE SplitPiece (p: Piece; off: LONGINT; VAR pr: Piece);
+ 333     VAR q: Piece;
+ 334   BEGIN
+ 335     IF off > 0 THEN NEW(q);
+ 336       q.fnt := p.fnt; q.col := p.col; q.voff := p.voff;
+ 337       q.len := p.len - off;
+ 338       q.f := p.f; q.off := p.off + off;
+ 339       p.len := off;
+ 340       q.next := p.next; p.next := q;
+ 341       q.prev := p; q.next.prev := q;
+ 342       pr := q
+ 343     ELSE pr := p
+ 344     END
+ 345   END SplitPiece;
+ 346 
+ 347   PROCEDURE Save* (T: Text; beg, end: LONGINT; B: Buffer);
+ 348     VAR p, q, qb, qe: Piece; org: LONGINT;
+ 349   BEGIN
+ 350     IF end > T.len THEN end := T.len END;
+ 351     FindPiece(T, beg, org, p);
+ 352     NEW(qb); qb^ := p^;
+ 353     qb.len := qb.len - (beg - org);
+ 354     qb.off := qb.off + (beg - org);
+ 355     qe := qb;
+ 356     WHILE end > org + p.len DO 
+ 357       org := org + p.len; p := p.next;
+ 358       NEW(q); q^ := p^; qe.next := q; q.prev := qe; qe := q
+ 359     END;
+ 360     qe.next := NIL; qe.len := qe.len - (org + p.len - end);
+ 361     B.last.next := qb; qb.prev := B.last; B.last := qe;
+ 362     B.len := B.len + (end - beg)
+ 363   END Save;
+ 364 
+ 365   PROCEDURE Copy* (SB, DB: Buffer);
+ 366     VAR Q, q, p: Piece;
+ 367   BEGIN p := SB.header; Q := DB.last;
+ 368     WHILE p # SB.last DO p := p.next;
+ 369       NEW(q); q^ := p^; Q.next := q; q.prev := Q; Q := q
+ 370     END;
+ 371     DB.last := Q; DB.len := DB.len + SB.len
+ 372   END Copy;
+ 373 
+ 374   PROCEDURE Insert* (T: Text; pos: LONGINT; B: Buffer);
+ 375     VAR pl, pr, p, qb, qe: Piece; org, end: LONGINT;
+ 376   BEGIN
+ 377     FindPiece(T, pos, org, p); SplitPiece(p, pos - org, pr);
+ 378     IF T.org >= org THEN T.org := org - p.prev.len; T.pce := p.prev END ;
+ 379     pl := pr.prev; qb := B.header.next;
+ 380     IF (qb # NIL) & (qb.f = pl.f) & (qb.off = pl.off + pl.len)
+ 381         & (qb.fnt = pl.fnt) & (qb.col = pl.col) & (qb.voff = pl.voff) THEN
+ 382       pl.len := pl.len + qb.len; qb := qb.next
+ 383     END;
+ 384     IF qb # NIL THEN qe := B.last;
+ 385       qb.prev := pl; pl.next := qb; qe.next := pr; pr.prev := qe
+ 386     END;
+ 387     T.len := T.len + B.len; end := pos + B.len;
+ 388     B.last := B.header; B.last.next := NIL; B.len := 0;
+ 389     T.changed := TRUE; T.notify(T, insert, pos, end)
+ 390   END Insert;
+ 391 
+ 392   PROCEDURE Append* (T: Text; B: Buffer);
+ 393   BEGIN Insert(T, T.len, B)
+ 394   END Append;
+ 395 
+ 396   PROCEDURE Delete* (T: Text; beg, end: LONGINT; B: Buffer);
+ 397     VAR pb, pe, pbr, per: Piece; orgb, orge: LONGINT;
+ 398   BEGIN
+ 399     IF end > T.len THEN end := T.len END;
+ 400     FindPiece(T, beg, orgb, pb); SplitPiece(pb, beg - orgb, pbr);
+ 401     FindPiece(T, end, orge, pe);
+ 402     SplitPiece(pe, end - orge, per);
+ 403     IF T.org >= orgb THEN (*adjust cache*)
+ 404       T.org := orgb - pb.prev.len; T.pce := pb.prev
+ 405     END;
+ 406     B.header.next := pbr; B.last := per.prev;
+ 407     B.last.next := NIL; B.len := end - beg;
+ 408     per.prev := pbr.prev; pbr.prev.next := per;
+ 409     T.len := T.len - B.len;
+ 410     T.changed := TRUE; T.notify(T, delete, beg, end)
+ 411   END Delete;
+ 412 
+ 413   PROCEDURE ChangeLooks* (T: Text; beg, end: LONGINT; sel: SET; fnt: Fonts.Font; col, voff: INTEGER);
+ 414     VAR pb, pe, p: Piece; org: LONGINT;
+ 415   BEGIN
+ 416     IF end > T.len THEN end := T.len END;
+ 417     FindPiece(T, beg, org, p); SplitPiece(p, beg - org, pb);
+ 418     FindPiece(T, end, org, p); SplitPiece(p, end - org, pe);
+ 419     p := pb;
+ 420     REPEAT
+ 421       IF 0 IN sel THEN p.fnt := fnt END;
+ 422       IF 1 IN sel THEN p.col := col END;
+ 423       IF 2 IN sel THEN p.voff := voff END;
+ 424       p := p.next
+ 425     UNTIL p = pe;
+ 426     T.changed := TRUE; T.notify(T, replace, beg, end)
+ 427   END ChangeLooks;
+ 428 
+ 429   PROCEDURE Attributes*(T: Text; pos: LONGINT; VAR fnt: Fonts.Font; VAR col, voff: INTEGER);
+ 430     VAR p: Piece; org: LONGINT;
+ 431   BEGIN FindPiece(T, pos, org, p); fnt := p.fnt; col := p.col; voff := p.voff
+ 432   END Attributes;
+ 433 
+ 434   (* ------------------ Access: Readers ------------------------- *)
+ 435 
+ 436   PROCEDURE OpenReader* (VAR R: Reader; T: Text; pos: LONGINT);
+ 437     VAR p: Piece; org: LONGINT;
+ 438   BEGIN FindPiece(T, pos, org, p);
+ 439     R.ref := p; R.org := org; R.off := pos - org;
+ 440     Files.Set(R.rider, p.f, p.off + R.off); R.eot := FALSE
+ 441   END OpenReader;
+ 442 
+ 443   PROCEDURE Read* (VAR R: Reader; VAR ch: CHAR);
+ 444   BEGIN Files.Read(R.rider, ch);
+ 445     R.fnt := R.ref.fnt; R.col := R.ref.col; R.voff := R.ref.voff;
+ 446     INC(R.off);
+ 447     IF R.off = R.ref.len THEN
+ 448       IF R.ref.f = TrailerFile THEN R.eot := TRUE END;
+ 449       R.org := R.org + R.off; R.off := 0;
+ 450       R.ref := R.ref.next; R.org := R.org + R.off; R.off := 0;
+ 451       Files.Set(R.rider, R.ref.f, R.ref.off)
+ 452     END
+ 453   END Read;
+ 454 
+ 455   PROCEDURE Pos* (VAR R: Reader): LONGINT;
+ 456   BEGIN RETURN R.org + R.off
+ 457   END Pos;  
+ 458 
+ 459   (* ------------------ Access: Scanners (NW) ------------------------- *)
+ 460 
+ 461   PROCEDURE OpenScanner* (VAR S: Scanner; T: Text; pos: LONGINT);
+ 462   BEGIN OpenReader(S, T, pos); S.line := 0; S.nextCh := " "
+ 463   END OpenScanner;
+ 464 
+ 465   (*floating point formats:
+ 466     x = 1.m * 2^(e-127)   bit 0: sign, bits 1- 8: e, bits  9-31: m
+ 467     x = 1.m * 2^(e-1023)  bit 0: sign, bits 1-11: e, bits 12-63: m *)
+ 468 
+ 469   PROCEDURE Ten(n: INTEGER): REAL;
+ 470     VAR t, p: REAL;
+ 471   BEGIN t := 1.0; p := 10.0;   (*compute 10^n *)
+ 472     WHILE n > 0 DO
+ 473       IF ODD(n) THEN t := p * t END ;
+ 474       p := p*p; n := n DIV 2
+ 475     END ;
+ 476     RETURN t
+ 477   END Ten;
+ 478 
+ 479   PROCEDURE Scan* (VAR S: Scanner);
+ 480     CONST maxExp = 38; maxM = 16777216; (*2^24*)
+ 481     VAR ch, term: CHAR;
+ 482       neg, negE, hex: BOOLEAN;
+ 483       i, j, h, d, e, n, s: INTEGER;
+ 484       k: LONGINT;
+ 485       x: REAL;
+ 486   BEGIN ch := S.nextCh; i := 0;
+ 487     WHILE ~S.eot & (ch <= " ") DO
+ 488       IF ch = CR THEN INC(S.line) END ;
+ 489       Read(S, ch)
+ 490     END ;
+ 491     IF ("A" <= ch) & (ch <= "Z") OR ("a" <= ch) & (ch <= "z") THEN (*name*)
+ 492       REPEAT S.s[i] := ch; INC(i); Read(S, ch)
+ 493       UNTIL ((ch < "0") & (ch # ".") OR ("9" < ch) & (ch < "A") OR ("Z" < ch) & (ch < "a") OR ("z" < ch)) OR (i = 31);
+ 494       S.s[i] := 0X; S.len := i; S.class := Name
+ 495     ELSIF ch = 22X THEN (*string*)
+ 496       Read(S, ch);
+ 497       WHILE (ch # 22X) & (ch >= " ") & (i # 31) DO S.s[i] := ch; INC(i); Read(S, ch) END;
+ 498       S.s[i] := 0X; S.len := i+1; Read(S, ch); S.class := String
+ 499     ELSE hex := FALSE;
+ 500       IF ch = "-" THEN neg := TRUE; Read(S, ch) ELSE neg := FALSE END ;
+ 501       IF ("0" <= ch) & (ch <= "9") THEN (*number*)
+ 502         n := ORD(ch) - 30H; h := n; Read(S, ch);
+ 503         WHILE ("0" <= ch) & (ch <= "9") OR ("A" <= ch) & (ch <= "F") DO
+ 504           IF ch <= "9" THEN d := ORD(ch) - 30H ELSE d := ORD(ch) - 37H; hex := TRUE END ;
+ 505           n := 10*n + d; h := 10H*h + d; Read(S, ch)
+ 506         END ;
+ 507         IF ch = "H" THEN (*hex integer*) Read(S, ch); S.i := h; S.class := Int  (*neg?*)
+ 508         ELSIF ch = "." THEN (*real number*)
+ 509           Read(S, ch); x := 0.0; e := 0; j := 0;
+ 510           WHILE ("0" <= ch) & (ch <= "9") DO  (*fraction*)
+ 511             h := 10*n + (ORD(ch) - 30H);
+ 512             IF h < maxM THEN n := h; INC(j) END ;
+ 513             Read(S, ch)
+ 514           END ;
+ 515           IF ch = "E" THEN (*scale factor*)
+ 516             s := 0; Read(S, ch);
+ 517             IF ch = "-" THEN negE := TRUE; Read(S, ch)
+ 518             ELSE negE := FALSE;
+ 519               IF ch = "+" THEN Read(S, ch) END
+ 520             END ;
+ 521             WHILE ("0" <= ch) & (ch <= "9") DO
+ 522               s := s*10 + ORD(ch) - 30H; Read(S, ch)
+ 523             END ;
+ 524             IF negE THEN DEC(e, s) ELSE INC(e, s) END ;
+ 525           END ;
+ 526           x := FLT(n); DEC(e, j);
+ 527           IF e < 0 THEN
+ 528             IF e >= -maxExp THEN x := x / Ten(-e) ELSE x := 0.0 END
+ 529           ELSIF e > 0 THEN
+ 530             IF e <= maxExp THEN x := Ten(e) * x ELSE x := 0.0 END
+ 531           END ;
+ 532           IF neg THEN S.x := -x ELSE S.x := x END ;
+ 533           IF hex THEN S.class := 0 ELSE S.class := Real END
+ 534         ELSE (*decimal integer*)
+ 535           IF neg THEN S.i := -n ELSE S.i := n END;
+ 536           IF hex THEN S.class := Inval ELSE S.class := Int END
+ 537         END
+ 538       ELSE (*spectal character*) S.class := Char;
+ 539         IF neg THEN S.c := "-" ELSE S.c := ch; Read(S, ch) END
+ 540       END
+ 541     END ;
+ 542     S.nextCh := ch
+ 543   END Scan;
+ 544 
+ 545   (* --------------- Access: Writers (NW) ------------------ *)
+ 546 
+ 547   PROCEDURE OpenWriter* (VAR W: Writer);
+ 548   BEGIN NEW(W.buf);
+ 549     OpenBuf(W.buf); W.fnt := Fonts.Default; W.col := 15; W.voff := 0;
+ 550     Files.Set(W.rider, Files.New(""), 0)
+ 551   END OpenWriter;
+ 552 
+ 553   PROCEDURE SetFont* (VAR W: Writer; fnt: Fonts.Font);
+ 554   BEGIN W.fnt := fnt
+ 555   END SetFont;
+ 556 
+ 557   PROCEDURE SetColor* (VAR W: Writer; col: INTEGER);
+ 558   BEGIN W.col := col
+ 559   END SetColor;
+ 560 
+ 561   PROCEDURE SetOffset* (VAR W: Writer; voff: INTEGER);
+ 562   BEGIN W.voff := voff
+ 563   END SetOffset;
+ 564 
+ 565   PROCEDURE Write* (VAR W: Writer; ch: CHAR);
+ 566     VAR p: Piece;
+ 567   BEGIN
+ 568     IF (W.buf.last.fnt # W.fnt) OR (W.buf.last.col # W.col) OR (W.buf.last.voff # W.voff) THEN
+ 569       NEW(p); p.f := Files.Base(W.rider); p.off := Files.Pos(W.rider); p.len := 0;
+ 570       p.fnt := W.fnt; p.col := W.col; p.voff:= W.voff;
+ 571       p.next := NIL; W.buf.last.next := p;
+ 572       p.prev := W.buf.last; W.buf.last := p
+ 573     END;
+ 574     Files.Write(W.rider, ch);
+ 575     INC(W.buf.last.len); INC(W.buf.len)
+ 576   END Write;
+ 577 
+ 578   PROCEDURE WriteLn* (VAR W: Writer);
+ 579   BEGIN Write(W, CR)
+ 580   END WriteLn;
+ 581 
+ 582   PROCEDURE WriteString* (VAR W: Writer; s: ARRAY OF CHAR);
+ 583     VAR i: INTEGER;
+ 584   BEGIN i := 0;
+ 585     WHILE s[i] >= " " DO Write(W, s[i]); INC(i) END
+ 586   END WriteString;
+ 587 
+ 588   PROCEDURE WriteInt* (VAR W: Writer; x, n: LONGINT);
+ 589     VAR i: INTEGER; x0: LONGINT;
+ 590       a: ARRAY 10 OF CHAR;
+ 591   BEGIN
+ 592     IF ROR(x, 31) = 1 THEN WriteString(W, " -2147483648")
+ 593     ELSE i := 0;
+ 594       IF x < 0 THEN DEC(n); x0 := -x ELSE x0 := x END;
+ 595       REPEAT
+ 596         a[i] := CHR(x0 MOD 10 + 30H); x0 := x0 DIV 10; INC(i)
+ 597       UNTIL x0 = 0;
+ 598       WHILE n > i DO Write(W, " "); DEC(n) END;
+ 599       IF x < 0 THEN Write(W, "-") END;
+ 600       REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
+ 601     END
+ 602   END WriteInt;
+ 603 
+ 604   PROCEDURE WriteHex* (VAR W: Writer; x: LONGINT);
+ 605     VAR i: INTEGER; y: LONGINT;
+ 606       a: ARRAY 10 OF CHAR;
+ 607   BEGIN i := 0; Write(W, " ");
+ 608     REPEAT y := x MOD 10H;
+ 609       IF y < 10 THEN a[i] := CHR(y + 30H) ELSE a[i] := CHR(y + 37H) END;
+ 610       x := x DIV 10H; INC(i)
+ 611     UNTIL i = 8;
+ 612     REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
+ 613   END WriteHex;
+ 614 
+ 615  PROCEDURE WriteReal* (VAR W: Writer; x: REAL; n: INTEGER);
+ 616     VAR e, i, m: INTEGER;
+ 617       d: ARRAY 16 OF CHAR;
+ 618   BEGIN e := ASR(ORD(x), 23) MOD 100H;  (*binary exponent*)
+ 619     IF e = 0 THEN
+ 620       WriteString(W, "  0 ");
+ 621       WHILE n >= 3 DO Write(W, " "); DEC(n) END
+ 622     ELSIF e = 255 THEN WriteString(W, " NaN ")
+ 623     ELSE Write(W, " ");
+ 624       WHILE n >= 15 DO DEC(n); Write(W, " ") END ;
+ 625       (* 2 < n < 9 digits to be written*)
+ 626       IF x < 0.0 THEN Write(W, "-"); x := -x ELSE Write(W, " ") END ;
+ 627       e := (e - 127) * 77 DIV 256 - 6;  (*decimal exponent*)
+ 628       IF e >= 0 THEN x := x / Ten(e) ELSE x := Ten(-e) * x END ;
+ 629       m := FLOOR(x + 0.5); i := 0;
+ 630       IF m >= 10000000 THEN INC(e); m := m DIV 10 END ;
+ 631       REPEAT d[i] := CHR(m MOD 10 + 30H); m := m DIV 10; INC(i) UNTIL m = 0;
+ 632       DEC(i); Write(W, d[i]); Write(W, ".");
+ 633       IF i < n-7 THEN n := 0 ELSE n := 14 - n END ;
+ 634       WHILE i > n DO DEC(i); Write(W, d[i]) END ;
+ 635       Write(W, "E"); INC(e, 6);
+ 636        IF e < 0 THEN Write(W, "-"); e := -e ELSE Write(W, "+") END ;
+ 637       Write(W, CHR(e DIV 10 + 30H)); Write(W, CHR(e MOD 10 + 30H))
+ 638     END
+ 639   END WriteReal;
+ 640 
+ 641   PROCEDURE WriteRealFix* (VAR W: Writer; x: REAL; n, k: INTEGER);
+ 642     VAR i, m: INTEGER; neg: BOOLEAN;
+ 643       d: ARRAY 12 OF CHAR;
+ 644   BEGIN
+ 645     IF x = 0.0 THEN WriteString(W, "  0")
+ 646     ELSE
+ 647       IF x < 0.0 THEN x := -x; neg := TRUE ELSE neg := FALSE END ;
+ 648       IF k > 7 THEN k := 7 END ;
+ 649       x := Ten(k) * x; m := FLOOR(x + 0.5);
+ 650       i := 0;
+ 651       REPEAT d[i] := CHR(m MOD 10 + 30H); m := m DIV 10; INC(i) UNTIL m = 0;
+ 652       Write(W, " ");
+ 653       WHILE n > i+3 DO  Write(W, " "); DEC(n) END ;
+ 654       IF neg THEN Write(W, "-"); DEC(n) ELSE Write(W, " ") END ;
+ 655       WHILE i > k DO DEC(i); Write(W, d[i]) END ;
+ 656       Write(W, ".");
+ 657       WHILE k > i DO DEC(k); Write(W, "0") END ;
+ 658       WHILE i > 0 DO DEC(i); Write(W, d[i]) END
+ 659     END
+ 660   END WriteRealFix;
+ 661 
+ 662   PROCEDURE WritePair(VAR W: Writer; ch: CHAR; x: LONGINT);
+ 663   BEGIN Write(W, ch);
+ 664     Write(W, CHR(x DIV 10 + 30H)); Write(W, CHR(x MOD 10 + 30H))
+ 665   END WritePair;
+ 666 
+ 667   PROCEDURE WriteClock* (VAR W: Writer; d: LONGINT);
+ 668   BEGIN
+ 669     WritePair(W, " ", d DIV 20000H MOD 20H);   (*day*)
+ 670     WritePair(W, ".", d DIV 400000H MOD 10H); (*month*)
+ 671     WritePair(W, ".", d DIV 4000000H MOD 40H);   (*year*)
+ 672     WritePair(W, " ", d DIV 1000H MOD 20H);   (*hour*)
+ 673     WritePair(W, ":", d DIV 40H MOD 40H);  (*min*)
+ 674     WritePair(W, ":", d MOD 40H)  (*sec*)
+ 675   END WriteClock;
+ 676 
+ 677 BEGIN TrailerFile := Files.New("")
+ 678 END Texts.
+ 679 
+ 680 ***********************************************************************************************************)
+ 681 
+
+There were:  1 error, and No warnings
+
+
