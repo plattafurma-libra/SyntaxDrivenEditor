@@ -28,6 +28,13 @@ public class EditParseGUI {
 		   
 		   	char lastEditedChar=swtText.getText().charAt(swtText.getText().length()-1);
 		    editParse.shared.setCharFromSWTText(lastEditedChar);	
+		    if (lastEditedChar=='$'){
+		    	// delete last char '$'
+		    	String text = swtText.getText(0,swtText.getText().length()-2);
+		    	swtText.setText(text);
+		    	editParse.shared.backTrack=true;
+		    	System.out.println("swtText after '$' entered: "+swtText.getText());
+		    }
 	 };
 		   	 
 	public void gui() {

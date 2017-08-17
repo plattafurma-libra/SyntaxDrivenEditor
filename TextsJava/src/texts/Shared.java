@@ -25,12 +25,14 @@ public class Shared {
 	
 	public void setCharFromSWTText(char ch){
 		System.out.println("Shared.charFromSWTText ch "+ch);
-		this.sharedText.setTextCharAtPos(ch, sharedText.getTextLen());
-		//sharedText.text[sharedText.getTextLen()]=ch;
-		this.sharedText.incTextLen();
-		this.available=sharedText.getTextLen()>sharedText.getTextPos();	
 		// backtrack if '$'
-		if(ch=='$') this.backTrack=true;
+		if(!this.backTrack) {
+			this.sharedText.setTextCharAtPos(ch, sharedText.getTextLen());
+			//sharedText.text[sharedText.getTextLen()]=ch;
+			this.sharedText.incTextLen();
+			this.available=sharedText.getTextLen()>sharedText.getTextPos();	
+		}
+		
 	}
 	
 	/***********************************************************************************/

@@ -43,6 +43,7 @@ BEGIN
 	WriteEntry("GetCharAtPos pos",0X,pos);
 	
 	ch:= sh.getCharAtTextPos(pos);
+	IF sh.backTrack THEN RETURN ' ' END;
 	(* ch:= sh.getSym();
 	IF pos < sh.texts.getTextLen() THEN
 			Console.WriteString("GetCharAtPos ch from sh.texts.getCharAtPos: ");
@@ -59,6 +60,7 @@ END GetCharAtPos;
 
 PROCEDURE MatchNegRange(range:RegexParser.Range; VAR flag:BOOLEAN);
 BEGIN
+	IF sh.backTrack THEN RETURN END;
 	REPEAT
 		flag:=((ch<range.min) OR (ch>range.max));
 		range:=range.next;
@@ -68,7 +70,7 @@ END MatchNegRange;
 PROCEDURE MatchRange(range:RegexParser.Range; VAR flag:BOOLEAN);
 BEGIN
 	WriteEntry("MatchRange ",ch,-1);
-	
+	IF sh.backTrack THEN RETURN END;
 	LOOP
 		IF range=NIL THEN EXIT END;
 		Console.WriteString("MatchRange range.min, range.max: ");
@@ -116,7 +118,7 @@ VAR  branch:RegexParser.Branch;
 				
 			BEGIN (* MatchAtom *)
 				WriteEntry("MatchAtom ",ch,i);
-				
+				IF sh.backTrack THEN RETURN END;
 				IF atom.range=NIL THEN  MatchRegex(atom.regex,flag);
 				ELSE	(*         *)
 					(*IF Final() THEN flag:=TRUE
@@ -124,7 +126,8 @@ VAR  branch:RegexParser.Branch;
 						*)
 						IF ~(ch=0X) THEN 
 							(*ch:=tarString[i];*)
-							ch:= GetCharAtPos(i,sh); (* sh.getCharAtTextPos(i);	*)					
+							ch:= GetCharAtPos(i,sh); (* sh.getCharAtTextPos(i);	*)		
+							IF sh.backTrack THEN RETURN END;			
 							INC(i);
 							Console.WriteString("MatchAtom getCharAtTPos ch: ");
 							Console.Write(ch); 
@@ -144,7 +147,7 @@ VAR  branch:RegexParser.Branch;
 		BEGIN (*MatchPiece*) (*hier Matching-Procedures aufrufen piece.MatchProcQuantified(piece,flag)*)
 			(*MatchProcOptional (?)*)
 			WriteEntry("MatchPiece ",0X,-1);
-			
+			IF sh.backTrack THEN RETURN END;
 			flag:=FALSE;temp_flag:=FALSE;q:=0;
 			CASE piece.id OF 
 				1:  Console.WriteString("MatchPiece Case 1");Console.WriteLn();
@@ -153,6 +156,7 @@ VAR  branch:RegexParser.Branch;
 					min:=0;
 					max:=1;
 					MatchAtom(atom,flag);
+					IF sh.backTrack THEN RETURN END;
 					IF ~flag THEN flag:=TRUE;
 						IF atom.regex=NIL THEN DEC(i) END
 					END; 
@@ -168,6 +172,7 @@ VAR  branch:RegexParser.Branch;
 					j1:=i;
 					REPEAT 
 						MatchAtom(atom,flag);
+						IF sh.backTrack THEN RETURN END;
 						IF flag THEN INC(q) END;
 					UNTIL (~flag) OR (q=max);
 					IF ~flag & (q>=min) THEN flag:=TRUE; 
@@ -180,6 +185,7 @@ VAR  branch:RegexParser.Branch;
 					min:=piece.min.val;
 					REPEAT 
 						MatchAtom(atom,flag);
+						IF sh.backTrack THEN RETURN END;
 						j1:=i;DEC(i); MatchAtom(temp_atom,temp_flag);
 						IF temp_atom.regex#NIL THEN i:=j1 END;
 						IF flag THEN INC(q) END;
@@ -191,6 +197,7 @@ VAR  branch:RegexParser.Branch;
 		
 		
 			END (*end-case*);
+			IF sh.backTrack THEN RETURN END;
 			IF flag THEN res:=1 ELSE res:=-1;END;
 			
 			WriteExit("MatchPiece ch ",res,ch,i);
@@ -199,6 +206,7 @@ VAR  branch:RegexParser.Branch;
 		PROCEDURE Final():BOOLEAN;
 		(* JR to be refined ? *)
 		BEGIN
+			IF sh.backTrack THEN RETURN FALSE END;
 			IF piece.suc=NIL THEN
 				IF piece.atom # NIL THEN
 					IF piece.atom.range#NIL THEN
@@ -218,6 +226,7 @@ VAR  branch:RegexParser.Branch;
 			IF (piece=NIL) OR Final()(*JR*) THEN  EXIT; (*alle Pieces abgearbeitet und ganzen String*)
 			END;
 			MatchPiece(piece,flag);
+			IF sh.backTrack THEN RETURN END;
 			IF flag THEN  piece:=piece.suc; 
 				
 			ELSE EXIT 
@@ -235,8 +244,10 @@ BEGIN (*Match Regex*)
 	LOOP
 		IF (branch=NIL) THEN EXIT END; 
 		MatchBranch(branch,flag);
+		IF sh.backTrack THEN RETURN END;
 		IF flag THEN EXIT;
 		ELSE 
+			
 			(*	Out.String("MatchRegex: Branch False  j= ");
 			Out.Int(j,2);Out.String("ch=");Out.Char(ch);Out.Ln();*)
 			Console.WriteLn();Console.WriteString("MatchRegex Branch false j:");
@@ -245,6 +256,7 @@ BEGIN (*Match Regex*)
 			i:=j;
 			(*ch:=tarString[i];*)
 			ch := GetCharAtPos(i,sh); (*sh.getCharAtTextPos(i);*)
+			IF sh.backTrack THEN RETURN END;
 			branch:=branch.alt
 		END
 	END;
@@ -261,6 +273,7 @@ BEGIN
 	i:=0;
 	(*ch:=tarString[i];*)
 	MatchRegex(regex,flag);
+	IF sh.backTrack THEN i:=0; RETURN FALSE END;
 	IF ch#0X THEN (*ch:=tarString[i]*) ch:=0X; END;
 	IF (flag) & (ch#0X) THEN flag:=FALSE END;
 	RETURN flag
@@ -286,6 +299,7 @@ BEGIN
 	Console.WriteInt(shared.getSharedText().getTextLen(),2);
 	Console.WriteLn;
 	MatchRegex(regex,flag);
+	IF sh.backTrack THEN i:=0; RETURN FALSE END;
 	RETURN flag;
 END EditMatch;
 

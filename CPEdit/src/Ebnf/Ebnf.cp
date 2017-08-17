@@ -306,13 +306,13 @@ VAR res:BOOLEAN; pos:INTEGER;
 			Console.WriteInt(txt.getTextPos(),2);
 			Console.WriteString(" "+tNode.name$);
 			Console.WriteLn();
-			(*IF shared.backTrack THEN
+			IF shared.backTrack THEN
 			
-				Console.WriteString(" backTrack");
+				Console.WriteString(" Match backTrack");
 				Console.WriteLn();
 				RETURN FALSE;
 			END;
-			*)
+			
 			index:=0;
 						
 			testBool:=RegexMatching.EditMatch(tNode.reg.regex,shared);
@@ -323,34 +323,14 @@ VAR res:BOOLEAN; pos:INTEGER;
 			END;
 			Console.WriteLn();
 			(*
-			WHILE tNode.name[index] # 0X DO
-				(* editor or File *)
-				IF editorOrFile THEN
-					ch:=shared.getSym();
-					(* test *)
-					testChar:=shared.getCharAtTextPos(0);
-					Console.WriteString("testChar: ");
-					Console.Write(ch);
-					Console.WriteLn();
-										
-				ELSE
-					ch:= txt.getTextChar();
-				END;
-				IF tNode.name[index] # ch THEN
-					Console.WriteString("match failed ");
-					Console.WriteLn();
-					RETURN FALSE;
-				ELSE
-					Console.Write(ch);
-				 	INC(index);
-				END;
-			END (* While*);
+			
 			*)
 			Console.WriteLn();
 			Console.WriteString("match ok for "+tNode.name$);
 			(*Console.WriteInt(txt.getTextPos(),2);*) Console.WriteLn();
-			RETURN TRUE;
-						
+			IF shared.backTrack THEN RETURN FALSE ELSE
+				RETURN TRUE;
+			END;		
 		END match;
 	
 	
@@ -370,24 +350,28 @@ BEGIN (*parse*)
 	IF node = NIL THEN RETURN TRUE
 	ELSIF node IS Terminal THEN
 			res:=match(node(Terminal));
+			IF shared.backTrack THEN RETURN FALSE END;
 			Console.WriteString("parse res after MatchProc: ");
 			Console.WriteInt(txt.getTextPos(),2);Console.WriteLn();			
 		(* depth first recursion for nonterminal *)
 	ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
 	END;
-	
+	IF shared.backTrack THEN RETURN FALSE END;
 	(* bredth second recursion*)
 	IF res THEN res:=parse(node.next);
-		IF res THEN RETURN TRUE;
+		IF shared.backTrack THEN RETURN FALSE
+		ELSIF res THEN RETURN TRUE;
 		END;
 	END;
-	
+	IF shared.backTrack THEN RETURN FALSE END;
 	(* alternative after fail, reset position in text *)
 	txt.setTextPos(pos);
 	(* no alt node is fail; if needed for distinction of case of empty node which is matched
 		without change of pos*)
 	IF node.alt=NIL THEN RETURN FALSE
-	ELSIF parse(node.alt) THEN RETURN TRUE
+	ELSIF parse(node.alt) THEN 
+		IF shared.backTrack THEN RETURN FALSE ELSE RETURN TRUE
+		END;
 	ELSE txt.setTextPos(pos);RETURN FALSE;		
 	END;
 	
