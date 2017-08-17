@@ -74,7 +74,7 @@ public class EditParse {
 		   }//editSyntaxDriven
 		   
 		   public void run() {
-			  Ebnf.init(true,this.shared);
+			  Ebnf.init(this.shared);
 			  System.out.println("TestEditParse ThrWord Thread run entry");
 			  while(!stop){
 				  if (counter >1000)stop=true;
@@ -82,7 +82,7 @@ public class EditParse {
 				  try {
 					  System.out.println("TestEditParse ThrWord vor getSym()");
 					  // hier kommt der Parser rein aus dem ein getSym aufgerufen wird,
-					  // das �ber TestShared mit Zeichen aus dem Editor versorgt wird
+					  // das  ueber TestShared mit Zeichen aus dem Editor versorgt wird
 					 
 					  //char ch= shared.getSym();
 					  //word();

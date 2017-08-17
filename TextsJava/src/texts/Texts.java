@@ -9,13 +9,13 @@ public class Texts {
 
 	BufferedReader in=null;
 	public boolean eot;
-	public char[] text;
+	private char[] textAsCharArray;
 	private int textLen;
 	private int textPos;
 	
 	// cstr
 	public Texts() {
-		this.text=new char[10000];
+		this.textAsCharArray=new char[10000];
 		textLen=0;
 		textPos=0;
 	}
@@ -42,18 +42,26 @@ public class Texts {
 	
 	public char getTextChar(){
 		//todo error if textPos>= textLen
-		char ch=this.text[textPos];
+		char ch=this.textAsCharArray[textPos];
 		textPos++;
 		return ch;
 	}
 	
-	public char getCharAtPos(int pos){
+	public char getTextCharAtPos(int pos){
 		if (pos >=this.textLen) 
 			//toDo
 			{int i = 10/0;return 0;}
-		else return this.text[pos];
+		else return this.textAsCharArray[pos];
 	}
 	
+	public void setTextCharAtPos(char ch, int pos) {
+		if (pos > this.textLen) 
+			//toDo
+			{int i = 10/0;}
+		else this.textAsCharArray[pos]=ch;
+		
+		
+	}
 		
 	public void open(String fileName){
 	System.out.println("Texts.open: "+fileName);
@@ -70,7 +78,7 @@ public class Texts {
 	}//open
 	
 	
-	public char read(){
+	public char readCharFromFile(){
 		
 		int val;	
 		try {
@@ -85,21 +93,28 @@ public class Texts {
 		return ' ';
 	}//read
 	
-	public void readText(String filename){
+	public void readTextFromFile(String filename){
 		System.out.println("Texts.readText: "+filename);
 		this.open(filename);
 		while(true){
-			char ch=this.read();
+			char ch=this.readCharFromFile();
 			System.out.print(ch);;
 			if (this.eot)break;
-			text[textLen]=ch;
+			this.textAsCharArray[textLen]=ch;
 			textLen++;
 		}
 		System.out.println();
+	}//readText	
+	
+	/*******Only for conversion of longint for Syntax Driven Editor Console Writing *****/
+		public static char[] convertLongIntToCharArray(long l){
+			// to string
+			String str=Long.toString(l);
+			char[] charArray = str.toCharArray();
+			return charArray;
+		}
 		
-			
 		
-		
-	}//readText
+
 
 }

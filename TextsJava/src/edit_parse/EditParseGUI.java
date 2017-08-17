@@ -16,18 +16,18 @@ public class EditParseGUI {
 	
 	EditParse editParse;
 	
-	 public void valueChanged(Text text) {
-		    if (!text.isFocusControl())
+	 public void valueChanged(Text swtText) {
+		    if (!swtText.isFocusControl())
 		      return;
-		    if (editParse==null){
+		    /*if (editParse==null){
 		    	editParse=new EditParse();
 		    	editParse.startThread();
-		    }	
+		    }*/	
 	      	
-		    System.out.println(text.getText());
-		    String str=text.getText();
-		   	
-		    editParse.shared.charInGUISet(str.charAt(str.length()-1));	
+		    System.out.println("swtText: "+swtText.getText());
+		   
+		   	char lastEditedChar=swtText.getText().charAt(swtText.getText().length()-1);
+		    editParse.shared.setCharFromSWTText(lastEditedChar);	
 	 };
 		   	 
 	public void gui() {
@@ -41,17 +41,22 @@ public class EditParseGUI {
         shell.setLayout(new GridLayout(1, false));
        
         // Create a multiple line edit_parse field
-	    Text text = new Text(shell, SWT.MULTI | SWT.BORDER | SWT.WRAP | SWT.V_SCROLL);
-	    text.setLayoutData(new GridData(GridData.FILL_BOTH));
+	    Text swtText = new Text(shell, SWT.MULTI | SWT.BORDER | SWT.WRAP | SWT.V_SCROLL);
+	    swtText.setLayoutData(new GridData(GridData.FILL_BOTH));
 	    
+	    /*-------------------------------*/
+	    editParse=new EditParse();
+    	editParse.startThread();
+    	
+    	/*--------------------------------*/
 	    ModifyListener listener = new ModifyListener() {
 		    /** {@inheritDoc} */
 		    public void modifyText(ModifyEvent e) {
 		        // Handle event
-		    	valueChanged(text);
+		    	valueChanged(swtText);
 		    }
 		};	
-		text.addModifyListener(listener);	    
+		swtText.addModifyListener(listener);	    
         shell.open();
        
        
