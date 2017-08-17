@@ -4,7 +4,11 @@ package texts;
 import java.io.BufferedReader;
 import java.io.FileReader;
 
-
+/* 
+ * Texts contains an array textAsCharArray for storing characters entered by the editor.
+ * textAsCharArray is a private. It is accessed by getters and setters, e.g. for parsing.
+ * Texts is part (attribute) of the Shared class by which htread communication is done
+ */
 public class Texts {
 
 	BufferedReader in=null;
