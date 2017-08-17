@@ -283,7 +283,7 @@ BEGIN
 	Console.Write(ch);
 	Console.WriteLn;
 	Console.WriteString("RegexMatching.EditMatch TextLen: ");
-	Console.WriteInt(shared.texts.getTextLen(),2);
+	Console.WriteInt(shared.getSharedText().getTextLen(),2);
 	Console.WriteLn;
 	MatchRegex(regex,flag);
 	RETURN flag;

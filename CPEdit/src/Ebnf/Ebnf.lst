@@ -4,476 +4,423 @@ Listing:
    2 
    3 
    4 
-   5 (* code mainly from Niklaus Wirth Grundlagen und Techniken des Compilerbaus, from English
-   6 version Compiler Construction, too (s. http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) and for more implementation
-   7 details from Wirth Compilerbau Stuttgart Teubner 1986 (for Modula 2).
-   8 Changes by JR;
-   9 Parser is rewritten to be completely recursive for to establish unlimited backtracking in parse.
-  10 *)
-  11 
+   5 
+   6 (* code mainly from Niklaus Wirth Grundlagen und Techniken des Compilerbaus, from English
+   7 version Compiler Construction, too (s. http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) and for more implementation
+   8 details from Wirth Compilerbau Stuttgart Teubner 1986 (for Modula 2).
+   9 Changes by JR;
+  10 Parser is rewritten to be completely recursive for to establish unlimited backtracking in parse.
+  11 *)
   12 
-  13 (* Wirth example: ebnf defined in ebnf
-  14 syntax        =     {production}.           
-  15 production    =     identifier "=" expression "." . 
-  16 expression    =     term {"|" term}. 
-  17 term          =     factor {factor}.              
-  18 factor        =     identifier | string | "(" expression ")"
-  19  | "[" expression "]" | "{" expression "}". 
-  20 By application of the given translation rules and subsequent simplification the following parser 
-  21 results. It is formulated as an Oberon module: 
-  22 *)
-  23 
+  13 
+  14 (* Wirth example: ebnf defined in ebnf
+  15 syntax        =     {production}.           
+  16 production    =     identifier "=" expression "." . 
+  17 expression    =     term {"|" term}. 
+  18 term          =     factor {factor}.              
+  19 factor        =     identifier | string | "(" expression ")"
+  20  | "[" expression "]" | "{" expression "}". 
+  21 By application of the given translation rules and subsequent simplification the following parser 
+  22 results. It is formulated as an Oberon module: 
+  23 *)
   24 
-  25  
-  26 IMPORT RTS,TextsCP, texts, Console, RegexApi, RegexMatching,RegexParser,CPmain; 
-**** -----------^ Cannot open symbol file
-**** Filename <TextsCP.cps>
-  27 
-  28 CONST IdLen = 32; 
-  29     ident = 0; literal = 2; lparen = 3; lbrak = 4; lbrace = 5; bar = 6; eql = 7; 
-  30     rparen = 8; rbrak = 9; rbrace = 10; period = 11; other = 12; 
-  31     
-  32 TYPE Identifier = ARRAY IdLen OF CHAR; 
-  33 
-  34      Symbol*=POINTER TO EXTENSIBLE RECORD alt,next:Symbol 
-  35      END;
-  36      
-  37      Terminal=POINTER TO RECORD(Symbol) sym:INTEGER;name:ARRAY IdLen OF CHAR; 
-  38         reg:RegexApi.Regex;
-  39      END;
-  40      
-  41      Nonterminal = POINTER TO NTSDesc;
-  42          NTSDesc = RECORD (Symbol) this: Header END;
-  43          Header = POINTER TO HDesc;
-  44          HDesc = RECORD sym: Symbol; entry: Symbol; suc:Header; name: ARRAY IdLen OF CHAR END;
-  45               
-  46 VAR list,sentinel,h:Header;
-  47         q,r,s: Symbol;
-  48         startsymbol*:Symbol (* startsymbol for parse if called from editor, is exported to call of parse procedure*);
-  49 
-  50         ch: CHAR;       
-  51     sym:      INTEGER;       
-  52     lastpos:  INTEGER;       
-  53     id:       Identifier;       
-  54     R:        TextsCP.Reader;       
-**** ----------------------^ Identifier not known in qualified scope
-  55     W:        TextsCP.Writer;       
-**** ----------------------^ Identifier not known in qualified scope
-  56    
-  57     txt:texts.Texts;
-  58     editorOrFile:BOOLEAN;
+  25 
+  26  
+  27 IMPORT RTS,TextsCP, texts, Console, RegexApi, RegexMatching,RegexParser,CPmain; 
+  28 
+  29 CONST IdLen = 32; 
+  30     ident = 0; literal = 2; lparen = 3; lbrak = 4; lbrace = 5; bar = 6; eql = 7; 
+  31     rparen = 8; rbrak = 9; rbrace = 10; period = 11; other = 12; 
+  32     
+  33 TYPE Identifier = ARRAY IdLen OF CHAR; 
+  34 
+  35      Symbol*=POINTER TO EXTENSIBLE RECORD alt,next:Symbol 
+  36      END;
+  37      
+  38      Terminal=POINTER TO RECORD(Symbol) sym:INTEGER;name:ARRAY IdLen OF CHAR; 
+  39         reg:RegexApi.Regex;
+  40      END;
+  41      
+  42      Nonterminal = POINTER TO NTSDesc;
+  43          NTSDesc = RECORD (Symbol) this: Header END;
+  44          Header = POINTER TO HDesc;
+  45          HDesc = RECORD sym: Symbol; entry: Symbol; suc:Header; name: ARRAY IdLen OF CHAR END;
+  46               
+  47 VAR list,sentinel,h:Header;
+  48         q,r,s: Symbol;
+  49         startsymbol*:Symbol (* startsymbol for parse if called from editor, is exported to call of parse procedure*);
+  50 
+  51         ch: CHAR;       
+  52     sym:      INTEGER;       
+  53     lastpos:  INTEGER;       
+  54     id:       Identifier;       
+  55     R:        TextsCP.Reader;       
+  56     W:        TextsCP.Writer;       
+  57    
+  58     txt:texts.Texts;
   59     shared:texts.Shared;
   60     
   61   
-  62 PROCEDURE SetEditorOrFile*(val:BOOLEAN);
-  63 BEGIN
-  64         editorOrFile:=val;
-  65 END SetEditorOrFile;
-  66     
-  67         
-  68 PROCEDURE error(n: INTEGER); 
-  69               VAR pos: INTEGER;       
-  70 BEGIN pos := TextsCP.Pos(R); 
-**** ---------------------^ Identifier not known in qualified scope
-  71         Console.WriteString("error nr: ");Console.WriteInt(n,2);Console.WriteLn;
-  72     IF pos > lastpos+4 THEN  (*avoid spurious error messages*) 
-  73         TextsCP.WriteString(W, "  pos"); TextsCP.WriteInt(W, pos, 6); 
-**** ----------------^ Identifier not known in qualified scope
-**** Identifier not known in qualified scope----------^
-  74         TextsCP.WriteString(W, "  err"); TextsCP.WriteInt(W, n, 4); lastpos := pos; 
-**** ----------------^ Identifier not known in qualified scope
-**** Identifier not known in qualified scope----------^
-  75         TextsCP.WriteString(W,"sym"); TextsCP.WriteInt(W, sym, 4); 
-**** ----------------^ Identifier not known in qualified scope
-**** Identifier not known in qualified scope-------^
-  76         TextsCP.WriteLn(W);   (* TextsCP.Append(Oberon.Log,W.buf)   *) 
-**** ----------------^ Identifier not known in qualified scope
-  77     END;
-  78     RTS.Throw(" error");       
-  79 END error;     
-  80 
-  81 PROCEDURE GetSym; 
-  82 VAR i:INTEGER;       
-  83 BEGIN 
-  84         WHILE ~R.eot & (ch <= " ") DO TextsCP.Read(R, ch) END ;   (*skip blanks*) 
-**** Identifier not known in qualified scope-------^
-  85     CASE ch OF       
-  86                 "A" .. "Z", "a" .. "z": sym := ident; i := 0; 
-  87                         REPEAT id[i] := ch; INC(i); TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope---------------------^
-  88                         UNTIL (CAP(ch) < "A") OR (CAP(ch) > "Z"); 
-  89             id[i]:=0X       
-  90                         |22X:  (*quote*) 
-  91                                 TextsCP.Read(R, ch); sym := literal; i := 0; 
-**** Identifier not known in qualified scope-^
-  92                                 (* wirth----------------------------------- 
-  93                                 WHILE (ch # 22X) & (ch > " ") DO 
-  94                     id[i]:= ch;
-  95                     INC(i);
-  96                     TextsCP.Read(R,ch)       
-  97                                 END ; 
-  98                                 IF ch <= " " THEN error(1) END ; 
-  99                                 ------------------------------------------*)
- 100                                 (* JR, regex *)
- 101                                 LOOP
- 102                                         IF ch=22X THEN
- 103                                                 IF i=0 (*empty terminal string*) THEN EXIT
- 104                                                 ELSIF id[i] # '\'  (* quote is NOT escaped *) THEN EXIT
- 105                                                 ELSIF (i >0) & (id[i-1] = '\') (* '\' is escaped by '\', 
- 106                                                 i.e. termination by '"'*)
- 107                                                                 THEN EXIT
- 108                                                 END;
- 109                                         END;
- 110                                     id[i]:= ch;
- 111                     INC(i);
- 112                     IF i > IdLen THEN error(1);
- 113                     END;
- 114                     TextsCP.Read(R,ch)       
-**** ----------------------------^ Identifier not known in qualified scope
- 115                                 END ; 
- 116                                 (* Wirth IF ch <= " " THEN error(1) END ;       *)
- 117                                 id[i] := 0X; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope--------------^
- 118                         |  "=" : sym := eql; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope--------------^
- 119                         |  "(" : sym := lparen; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope-----------------^
- 120                         |  ")" : sym := rparen; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope-----------------^
- 121                         |  "[" : sym := lbrak; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope----------------^
- 122                         |  "]" : sym := rbrak; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope----------------^
- 123                         | "{" : sym := lbrace; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope----------------^
- 124                         |  "}" : sym := rbrace; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope-----------------^
- 125                         | "|" : sym := bar; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope-------------^
- 126                         |  "." : sym := period; TextsCP.Read(R, ch) 
-**** Identifier not known in qualified scope-----------------^
- 127                         ELSE sym := other; 
- 128                                 (* if entered by jr; otherwise eof error*)
- 129                                 IF R.eot THEN ch:=' ' ELSE TextsCP.Read(R, ch);END; 
-**** Identifier not known in qualified scope----------------------------^
- 130                 END       
- 131 END GetSym; 
- 132 
- 133  
- 134 PROCEDURE find(str : ARRAY OF CHAR; VAR h:Header);
- 135 VAR h1:Header;
- 136 BEGIN
- 137         h1:=list;
- 138         sentinel.name:=str$;
- 139         WHILE h1.name#str DO h1:=h1.suc;END;
- 140         IF h1 = sentinel THEN (*insert*)
- 141                 NEW(sentinel);
- 142                 h1.suc := sentinel;
- 143                 h1.entry:=NIL;
- 144         END;    
- 145         h:=h1;
- 146 END find;
- 147 
- 148 PROCEDURE link(p,q:Symbol);
- 149 VAR t:Symbol;
- 150 
- 151 BEGIN (* insert q in places indicated by linked chain p *)
- 152         WHILE p # NIL DO
- 153                 t := p; p:=t.next; t.next:=q;
- 154         END;
- 155 END link;
- 156    
- 157 
- 158 PROCEDURE expression(VAR p,q,r,s:Symbol);   
- 159 VAR q1, s1:Symbol;
- 160 
- 161     
- 162     PROCEDURE term(VAR p,q,r,s:Symbol);  
- 163     VAR p1,q1,r1,s1:Symbol;     
- 164 
- 165        PROCEDURE factor(VAR p,q,r,s:Symbol);    
- 166        VAR a:Symbol;identifiernonterminal:Nonterminal;literalterminal:Terminal; h:Header;
- 167        BEGIN h:=NIL;a:=NIL;identifiernonterminal:=NIL;literalterminal:=NIL;                     
- 168             IF sym = ident (*nonterminal*) THEN
- 169                 NEW(identifiernonterminal);
- 170                 find(id$,h);
- 171                 (* name of nonterminal symbol may be accessed via h.name);*)
- 172                 identifiernonterminal.this:=h;
- 173                 a:=identifiernonterminal;a.alt:=NIL;a.next:=NIL;
- 174                 
- 175                 (*record(T0, id, 1);*)  
- 176                 p:=a;q:=a;r:=a;s:=a;           
- 177                 GetSym 
- 178             ELSIF sym = literal (*terminal*) THEN 
- 179                 NEW(literalterminal);literalterminal.sym:=sym;
- 180                 literalterminal.name:=id$; 
- 181                 literalterminal.reg:=RegexApi.CreateRegex(id$);
- 182                 a:=literalterminal;a.alt:=NIL;a.next:=NIL;
- 183                 (*record(T1, id, 0);*) 
- 184                 
- 185                 p:=a;q:=a;r:=a;s:=a; 
- 186                 GetSym 
- 187             ELSIF sym = lparen THEN 
- 188                         GetSym; 
- 189                         expression(p,q,r,s); 
- 190                 IF sym = rparen THEN GetSym ELSE error(2) END 
- 191             ELSIF sym = lbrak THEN 
- 192                         GetSym; expression(p,q,r,s); 
- 193                         
- 194                         NEW(literalterminal);literalterminal.sym:=sym;
- 195                 literalterminal.name:=""; 
- 196                 a:=literalterminal;a.alt:=NIL;a.next:=NIL;
- 197                 q.alt:=a;s.next:=a;q:=a;s:=a;
- 198                 IF sym = rbrak THEN GetSym ELSE error(3) END 
- 199             ELSIF sym = lbrace THEN 
- 200                         GetSym; expression(p,q,r,s); 
- 201                         
- 202                         NEW(literalterminal);literalterminal.sym:=sym;
- 203                 literalterminal.name:=""; 
- 204                 a:=literalterminal;a.alt:=NIL;a.next:=NIL;
- 205                         q.alt:=a;q:=a;r:=a;s:=a;
- 206                 IF sym = rbrace THEN GetSym ELSE error(4) END 
- 207             ELSE    error(5)    
- 208                 END;            
- 209         END factor;    
- 210  
- 211     
- 212      BEGIN (*term*) 
- 213         p1:=NIL;q1:=NIL;r1:=NIL;s1:=NIL;        
- 214         factor(p,q,r,s);           
- 215         WHILE sym < bar DO 
- 216                 factor(p1,q1,r1,s1);link(r,p1);r:=r1;s:=s1; 
- 217         END;            
- 218        
- 219      END term; 
- 220            
- 221     BEGIN (*expression*)  
- 222         q1:=NIL;s1:=NIL;  
- 223         
- 224         term(p,q,r,s);      
- 225         WHILE sym = bar DO GetSym; term(q.alt,q1,s.next,s1);q:=q1;s:=s1; 
- 226         END;    
- 227         
- 228     END expression;
- 229  
- 230 
- 231            
- 232 PROCEDURE production;       
- 233 BEGIN (*sym = ident*) 
- 234         
- 235         find(id$,h);
- 236         GetSym; 
- 237     IF sym = eql THEN GetSym ELSE error(7) END; 
- 238     expression(h.entry,q,r,s); link(r,NIL);   
- 239     IF sym = period THEN 
- 240         GetSym
- 241     ELSE error(8) 
- 242     END;
- 243      
- 244 END production;
- 245 
- 246 
- 247       
- 248 PROCEDURE syntax;       
- 249 BEGIN           
- 250         TextsCP.WriteStringLn("syntax start");
-**** ----------------^ Identifier not known in qualified scope
- 251     WHILE sym = ident DO production END;  
- 252     TextsCP.WriteStringLn("syntax end"); 
-**** ------------^ Identifier not known in qualified scope
- 253 END syntax;  
- 254 
- 255 (* checks whether there is a nonterminalwhich does not lead to a terminal*)
- 256 PROCEDURE checkSyntax():BOOLEAN;
- 257 VAR h:Header;error:BOOLEAN;(*i:INTEGER;*)
- 258 BEGIN
- 259         Console.WriteLn();
- 260         h:=list;error:=FALSE;
- 261         WHILE h # sentinel DO   
- 262                 IF h.entry=NIL THEN 
- 263                         error:=TRUE;
- 264                         Console.WriteString("undefined Symbol "+h.name);Console.WriteLn();
- 265                 ELSE Console.WriteString("Symbol "+h.name);Console.WriteLn();
- 266                         (*i:=0;
- 267                         WHILE h.name[i]#0X DO Console.Write(h.name[i]);INC(i);END;Console.WriteLn();
- 268                         *)
- 269                 END;
- 270                 h:=h.suc;
- 271         END (*while*);
- 272         RETURN ~error;
- 273 END checkSyntax;
- 274             
- 275 PROCEDURE Compile*():BOOLEAN; 
- 276 VAR ok:BOOLEAN;
- 277 BEGIN (*set R to the beginning of the text to be compiled*) 
- 278         TextsCP.WriteString(W,"Compile Start read Grammar");Console.WriteLn();
-**** ----------------^ Identifier not known in qualified scope
- 279         R.filename:= "C://users//rols//lexGrammar.txt"; 
- 280         TextsCP.OpenReader(R);
-**** ----------------^ Identifier not known in qualified scope
- 281         Console.WriteString("EBNF nach OpenReader");Console.WriteLn();  
- 282         
- 283         ok:=FALSE;
- 284     lastpos := 0; 
- 285     NEW(sentinel);list:=sentinel;h:=list;
- 286     TextsCP.Read(R, ch); 
-**** ------------^ Identifier not known in qualified scope
- 287     GetSym;
- 288     syntax;  
- 289     IF checkSyntax() THEN ok:=TRUE;
- 290     END;   
- 291     (*TextsCP.Append(Oberon.Log,W.buf) *)   
- 292     IF ok THEN
- 293         TextsCP.WriteString(W,"Compile ok")
-**** ----------------^ Identifier not known in qualified scope
- 294     ELSE TextsCP.WriteString(W,"Compile failed");
-**** -----------------^ Identifier not known in qualified scope
- 295     END;
- 296     Console.WriteLn(); 
- 297     RETURN ok; 
- 298 END Compile;    
- 299 
- 300 
- 301 PROCEDURE parse*(node:Symbol):BOOLEAN;
- 302 
- 303 VAR res:BOOLEAN; pos:INTEGER;
- 304 
- 305                 PROCEDURE match(tNode:Terminal):BOOLEAN;
- 306         
- 307                 VAR index:INTEGER;ch:CHAR;testChar:CHAR;testBool:BOOLEAN;
- 308         
- 309                 (* TODO Regex*)
- 310                 BEGIN
- 311                         Console.WriteString("parse.match Start pos: ");
- 312                         Console.WriteInt(txt.getTextPos(),2);
- 313                         Console.WriteString(" "+tNode.name$);
- 314                         Console.WriteLn();
- 315                         index:=0;
- 316                                                 
- 317                         testBool:=RegexMatching.EditMatch(tNode.reg.regex,shared);
- 318                         IF testBool THEN 
- 319                                 Console.WriteString(" nach EditMatch testBool true");
- 320                         ELSE
- 321                                 Console.WriteString(" nach EditMatch testBool false");
- 322                         END;
- 323                         Console.WriteLn();
- 324                         (*
- 325                         WHILE tNode.name[index] # 0X DO
- 326                                 (* editor or File *)
- 327                                 IF editorOrFile THEN
- 328                                         ch:=shared.getSym();
- 329                                         (* test *)
- 330                                         testChar:=shared.getCharAtTextPos(0);
- 331                                         Console.WriteString("testChar: ");
- 332                                         Console.Write(ch);
- 333                                         Console.WriteLn();
- 334                                                                                 
- 335                                 ELSE
- 336                                         ch:= txt.getTextChar();
- 337                                 END;
- 338                                 IF tNode.name[index] # ch THEN
- 339                                         Console.WriteString("match failed ");
- 340                                         Console.WriteLn();
- 341                                         RETURN FALSE;
- 342                                 ELSE
- 343                                         Console.Write(ch);
- 344                                         INC(index);
- 345                                 END;
- 346                         END (* While*);
- 347                         *)
- 348                         Console.WriteLn();
- 349                         Console.WriteString("match ok for "+tNode.name$);
- 350                         (*Console.WriteInt(txt.getTextPos(),2);*) Console.WriteLn();
- 351                         RETURN TRUE;
- 352                                                 
- 353                 END match;
- 354         
- 355         
- 356 
- 357 BEGIN (*parse*)
- 358         Console.WriteString("parse (*hd.name: *)"(*+hd.name*));Console.WriteLn();
- 359         pos:=txt.getTextPos();
- 360         res:=FALSE;     
- 361         IF node = NIL THEN RETURN TRUE
- 362         ELSIF node IS Terminal THEN
- 363                         res:=match(node(Terminal));
- 364                         Console.WriteString("parse res after MatchProc: ");
- 365                         Console.WriteInt(txt.getTextPos(),2);Console.WriteLn();                 
- 366                 (* depth first recursion for nonterminal *)
- 367         ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
+  62 PROCEDURE error(n: INTEGER); 
+  63               VAR pos: INTEGER;       
+  64 BEGIN pos := TextsCP.Pos(R); 
+  65         Console.WriteString("error nr: ");Console.WriteInt(n,2);Console.WriteLn;
+  66     IF pos > lastpos+4 THEN  (*avoid spurious error messages*) 
+  67         TextsCP.WriteString(W, "  pos"); TextsCP.WriteInt(W, pos, 6); 
+  68         TextsCP.WriteString(W, "  err"); TextsCP.WriteInt(W, n, 4); lastpos := pos; 
+  69         TextsCP.WriteString(W,"sym"); TextsCP.WriteInt(W, sym, 4); 
+  70         TextsCP.WriteLn(W);   (* TextsCP.Append(Oberon.Log,W.buf)   *) 
+  71     END;
+  72     RTS.Throw(" error");       
+  73 END error;     
+  74 
+  75 PROCEDURE GetSym; 
+  76 VAR i:INTEGER;       
+  77 BEGIN 
+  78         WHILE ~R.eot & (ch <= " ") DO TextsCP.Read(R, ch) END ;   (*skip blanks*) 
+  79     CASE ch OF       
+  80                 "A" .. "Z", "a" .. "z": sym := ident; i := 0; 
+  81                         REPEAT id[i] := ch; INC(i); TextsCP.Read(R, ch) 
+  82                         UNTIL (CAP(ch) < "A") OR (CAP(ch) > "Z"); 
+  83             id[i]:=0X       
+  84                         |22X:  (*quote*) 
+  85                                 TextsCP.Read(R, ch); sym := literal; i := 0; 
+  86                                 (* wirth----------------------------------- 
+  87                                 WHILE (ch # 22X) & (ch > " ") DO 
+  88                     id[i]:= ch;
+  89                     INC(i);
+  90                     TextsCP.Read(R,ch)       
+  91                                 END ; 
+  92                                 IF ch <= " " THEN error(1) END ; 
+  93                                 ------------------------------------------*)
+  94                                 (* JR, regex *)
+  95                                 LOOP
+  96                                         IF ch=22X THEN
+  97                                                 IF i=0 (*empty terminal string*) THEN EXIT
+  98                                                 ELSIF id[i] # '\'  (* quote is NOT escaped *) THEN EXIT
+  99                                                 ELSIF (i >0) & (id[i-1] = '\') (* '\' is escaped by '\', 
+ 100                                                 i.e. termination by '"'*)
+ 101                                                                 THEN EXIT
+ 102                                                 END;
+ 103                                         END;
+ 104                                     id[i]:= ch;
+ 105                     INC(i);
+ 106                     IF i > IdLen THEN error(1);
+ 107                     END;
+ 108                     TextsCP.Read(R,ch)       
+ 109                                 END ; 
+ 110                                 (* Wirth IF ch <= " " THEN error(1) END ;       *)
+ 111                                 id[i] := 0X; TextsCP.Read(R, ch) 
+ 112                         |  "=" : sym := eql; TextsCP.Read(R, ch) 
+ 113                         |  "(" : sym := lparen; TextsCP.Read(R, ch) 
+ 114                         |  ")" : sym := rparen; TextsCP.Read(R, ch) 
+ 115                         |  "[" : sym := lbrak; TextsCP.Read(R, ch) 
+ 116                         |  "]" : sym := rbrak; TextsCP.Read(R, ch) 
+ 117                         | "{" : sym := lbrace; TextsCP.Read(R, ch) 
+ 118                         |  "}" : sym := rbrace; TextsCP.Read(R, ch) 
+ 119                         | "|" : sym := bar; TextsCP.Read(R, ch) 
+ 120                         |  "." : sym := period; TextsCP.Read(R, ch) 
+ 121                         ELSE sym := other; 
+ 122                                 (* if entered by jr; otherwise eof error*)
+ 123                                 IF R.eot THEN ch:=' ' ELSE TextsCP.Read(R, ch);END; 
+ 124                 END       
+ 125 END GetSym; 
+ 126 
+ 127  
+ 128 PROCEDURE find(str : ARRAY OF CHAR; VAR h:Header);
+ 129 VAR h1:Header;
+ 130 BEGIN
+ 131         h1:=list;
+ 132         sentinel.name:=str$;
+ 133         WHILE h1.name#str DO h1:=h1.suc;END;
+ 134         IF h1 = sentinel THEN (*insert*)
+ 135                 NEW(sentinel);
+ 136                 h1.suc := sentinel;
+ 137                 h1.entry:=NIL;
+ 138         END;    
+ 139         h:=h1;
+ 140 END find;
+ 141 
+ 142 PROCEDURE link(p,q:Symbol);
+ 143 VAR t:Symbol;
+ 144 
+ 145 BEGIN (* insert q in places indicated by linked chain p *)
+ 146         WHILE p # NIL DO
+ 147                 t := p; p:=t.next; t.next:=q;
+ 148         END;
+ 149 END link;
+ 150    
+ 151 
+ 152 PROCEDURE expression(VAR p,q,r,s:Symbol);   
+ 153 VAR q1, s1:Symbol;
+ 154 
+ 155     
+ 156     PROCEDURE term(VAR p,q,r,s:Symbol);  
+ 157     VAR p1,q1,r1,s1:Symbol;     
+ 158 
+ 159        PROCEDURE factor(VAR p,q,r,s:Symbol);    
+ 160        VAR a:Symbol;identifiernonterminal:Nonterminal;literalterminal:Terminal; h:Header;
+ 161        BEGIN h:=NIL;a:=NIL;identifiernonterminal:=NIL;literalterminal:=NIL;                     
+ 162             IF sym = ident (*nonterminal*) THEN
+ 163                 NEW(identifiernonterminal);
+ 164                 find(id$,h);
+ 165                 (* name of nonterminal symbol may be accessed via h.name);*)
+ 166                 identifiernonterminal.this:=h;
+ 167                 a:=identifiernonterminal;a.alt:=NIL;a.next:=NIL;
+ 168                 
+ 169                 (*record(T0, id, 1);*)  
+ 170                 p:=a;q:=a;r:=a;s:=a;           
+ 171                 GetSym 
+ 172             ELSIF sym = literal (*terminal*) THEN 
+ 173                 NEW(literalterminal);literalterminal.sym:=sym;
+ 174                 literalterminal.name:=id$; 
+ 175                 literalterminal.reg:=RegexApi.CreateRegex(id$);
+ 176                 a:=literalterminal;a.alt:=NIL;a.next:=NIL;
+ 177                 (*record(T1, id, 0);*) 
+ 178                 
+ 179                 p:=a;q:=a;r:=a;s:=a; 
+ 180                 GetSym 
+ 181             ELSIF sym = lparen THEN 
+ 182                         GetSym; 
+ 183                         expression(p,q,r,s); 
+ 184                 IF sym = rparen THEN GetSym ELSE error(2) END 
+ 185             ELSIF sym = lbrak THEN 
+ 186                         GetSym; expression(p,q,r,s); 
+ 187                         
+ 188                         NEW(literalterminal);literalterminal.sym:=sym;
+ 189                 literalterminal.name:=""; 
+ 190                 a:=literalterminal;a.alt:=NIL;a.next:=NIL;
+ 191                 q.alt:=a;s.next:=a;q:=a;s:=a;
+ 192                 IF sym = rbrak THEN GetSym ELSE error(3) END 
+ 193             ELSIF sym = lbrace THEN 
+ 194                         GetSym; expression(p,q,r,s); 
+ 195                         
+ 196                         NEW(literalterminal);literalterminal.sym:=sym;
+ 197                 literalterminal.name:=""; 
+ 198                 a:=literalterminal;a.alt:=NIL;a.next:=NIL;
+ 199                         q.alt:=a;q:=a;r:=a;s:=a;
+ 200                 IF sym = rbrace THEN GetSym ELSE error(4) END 
+ 201             ELSE    error(5)    
+ 202                 END;            
+ 203         END factor;    
+ 204  
+ 205     
+ 206      BEGIN (*term*) 
+ 207         p1:=NIL;q1:=NIL;r1:=NIL;s1:=NIL;        
+ 208         factor(p,q,r,s);           
+ 209         WHILE sym < bar DO 
+ 210                 factor(p1,q1,r1,s1);link(r,p1);r:=r1;s:=s1; 
+ 211         END;            
+ 212        
+ 213      END term; 
+ 214            
+ 215     BEGIN (*expression*)  
+ 216         q1:=NIL;s1:=NIL;  
+ 217         
+ 218         term(p,q,r,s);      
+ 219         WHILE sym = bar DO GetSym; term(q.alt,q1,s.next,s1);q:=q1;s:=s1; 
+ 220         END;    
+ 221         
+ 222     END expression;
+ 223  
+ 224 
+ 225            
+ 226 PROCEDURE production;       
+ 227 BEGIN (*sym = ident*) 
+ 228         
+ 229         find(id$,h);
+ 230         GetSym; 
+ 231     IF sym = eql THEN GetSym ELSE error(7) END; 
+ 232     expression(h.entry,q,r,s); link(r,NIL);   
+ 233     IF sym = period THEN 
+ 234         GetSym
+ 235     ELSE error(8) 
+ 236     END;
+ 237      
+ 238 END production;
+ 239 
+ 240 
+ 241       
+ 242 PROCEDURE syntax;       
+ 243 BEGIN           
+ 244         TextsCP.WriteStringLn("syntax start");
+ 245     WHILE sym = ident DO production END;  
+ 246     TextsCP.WriteStringLn("syntax end"); 
+ 247 END syntax;  
+ 248 
+ 249 (* checks whether there is a nonterminalwhich does not lead to a terminal*)
+ 250 PROCEDURE checkSyntax():BOOLEAN;
+ 251 VAR h:Header;error:BOOLEAN;(*i:INTEGER;*)
+ 252 BEGIN
+ 253         Console.WriteLn();
+ 254         h:=list;error:=FALSE;
+ 255         WHILE h # sentinel DO   
+ 256                 IF h.entry=NIL THEN 
+ 257                         error:=TRUE;
+ 258                         Console.WriteString("undefined Symbol "+h.name);Console.WriteLn();
+ 259                 ELSE Console.WriteString("Symbol "+h.name);Console.WriteLn();
+ 260                         (*i:=0;
+ 261                         WHILE h.name[i]#0X DO Console.Write(h.name[i]);INC(i);END;Console.WriteLn();
+ 262                         *)
+ 263                 END;
+ 264                 h:=h.suc;
+ 265         END (*while*);
+ 266         RETURN ~error;
+ 267 END checkSyntax;
+ 268             
+ 269 PROCEDURE Compile*():BOOLEAN; 
+ 270 VAR ok:BOOLEAN;
+ 271 BEGIN (*set R to the beginning of the text to be compiled*) 
+ 272         TextsCP.WriteString(W,"Compile Start read Grammar");Console.WriteLn();
+ 273         R.filename:= "C://users//rols//lexGrammar.txt"; 
+ 274         TextsCP.OpenReader(R);
+ 275         Console.WriteString("EBNF nach OpenReader");Console.WriteLn();  
+ 276         
+ 277         ok:=FALSE;
+ 278     lastpos := 0; 
+ 279     NEW(sentinel);list:=sentinel;h:=list;
+ 280     TextsCP.Read(R, ch); 
+ 281     GetSym;
+ 282     syntax;  
+ 283     IF checkSyntax() THEN ok:=TRUE;
+ 284     END;   
+ 285     (*TextsCP.Append(Oberon.Log,W.buf) *)   
+ 286     IF ok THEN
+ 287         TextsCP.WriteString(W,"Compile ok")
+ 288     ELSE TextsCP.WriteString(W,"Compile failed");
+ 289     END;
+ 290     Console.WriteLn(); 
+ 291     RETURN ok; 
+ 292 END Compile;    
+ 293 
+ 294 
+ 295 PROCEDURE parse*(node:Symbol):BOOLEAN;
+ 296 
+ 297 VAR res:BOOLEAN; pos:INTEGER;
+ 298 
+ 299                 PROCEDURE match(tNode:Terminal):BOOLEAN;
+ 300         
+ 301                 VAR index:INTEGER;ch:CHAR;testChar:CHAR;testBool:BOOLEAN;
+ 302         
+ 303                 (*          *)
+ 304                 BEGIN
+ 305                         Console.WriteString("parse.match Start pos: ");
+ 306                         Console.WriteInt(txt.getTextPos(),2);
+ 307                         Console.WriteString(" "+tNode.name$);
+ 308                         Console.WriteLn();
+ 309                         index:=0;
+ 310                                                 
+ 311                         testBool:=RegexMatching.EditMatch(tNode.reg.regex,shared);
+ 312                         IF testBool THEN 
+ 313                                 Console.WriteString(" nach EditMatch testBool true");
+ 314                         ELSE
+ 315                                 Console.WriteString(" nach EditMatch testBool false");
+ 316                         END;
+ 317                         Console.WriteLn();
+ 318                         (*
+ 319                         WHILE tNode.name[index] # 0X DO
+ 320                                 (* editor or File *)
+ 321                                 IF editorOrFile THEN
+ 322                                         ch:=shared.getSym();
+ 323                                         (* test *)
+ 324                                         testChar:=shared.getCharAtTextPos(0);
+ 325                                         Console.WriteString("testChar: ");
+ 326                                         Console.Write(ch);
+ 327                                         Console.WriteLn();
+ 328                                                                                 
+ 329                                 ELSE
+ 330                                         ch:= txt.getTextChar();
+ 331                                 END;
+ 332                                 IF tNode.name[index] # ch THEN
+ 333                                         Console.WriteString("match failed ");
+ 334                                         Console.WriteLn();
+ 335                                         RETURN FALSE;
+ 336                                 ELSE
+ 337                                         Console.Write(ch);
+ 338                                         INC(index);
+ 339                                 END;
+ 340                         END (* While*);
+ 341                         *)
+ 342                         Console.WriteLn();
+ 343                         Console.WriteString("match ok for "+tNode.name$);
+ 344                         (*Console.WriteInt(txt.getTextPos(),2);*) Console.WriteLn();
+ 345                         RETURN TRUE;
+ 346                                                 
+ 347                 END match;
+ 348         
+ 349         
+ 350 
+ 351 BEGIN (*parse*)
+ 352         Console.WriteString("parse (*hd.name: *)"(*+hd.name*));Console.WriteLn();
+ 353         pos:=txt.getTextPos();
+ 354         res:=FALSE;     
+ 355         IF node = NIL THEN RETURN TRUE
+ 356         ELSIF node IS Terminal THEN
+ 357                         res:=match(node(Terminal));
+ 358                         Console.WriteString("parse res after MatchProc: ");
+ 359                         Console.WriteInt(txt.getTextPos(),2);Console.WriteLn();                 
+ 360                 (* depth first recursion for nonterminal *)
+ 361         ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
+ 362         END;
+ 363         
+ 364         (* bredth second recursion*)
+ 365         IF res THEN res:=parse(node.next);
+ 366                 IF res THEN RETURN TRUE;
+ 367                 END;
  368         END;
  369         
- 370         (* bredth second recursion*)
- 371         IF res THEN res:=parse(node.next);
- 372                 IF res THEN RETURN TRUE;
- 373                 END;
- 374         END;
- 375         
- 376         (* alternative after fail, reset position in text *)
- 377         txt.setTextPos(pos);
- 378         (* no alt node is fail; if needed for distinction of case of empty node which is matched
- 379                 without change of pos*)
- 380         IF node.alt=NIL THEN RETURN FALSE
- 381         ELSIF parse(node.alt) THEN RETURN TRUE
- 382         ELSE txt.setTextPos(pos);RETURN FALSE;          
- 383         END;
- 384         
- 385 END parse;
- 386 
- 387 
- 388 PROCEDURE init*(edit:BOOLEAN;sh:texts.Shared):BOOLEAN;
- 389 
- 390 BEGIN
- 391         Console.WriteString("Init entry");Console.WriteLn();    
- 392         IF Compile() THEN               
- 393                 Console.WriteString("nach Compile");Console.WriteLn();                  
- 394                 (* interactive *)
- 395                 IF edit THEN 
- 396                         editorOrFile:=TRUE;
- 397                         startsymbol:=list.entry;
- 398                         shared:=sh;
- 399                         txt:=shared.texts;(* for getTextPos and setTextPos access*)
- 400                         RegexMatching.GetStartCh(sh);
- 401                 ELSE (* file only *)
- 402                         editorOrFile:=FALSE;
- 403                         NEW(txt);
- 404                         Console.WriteString("nach new txt");Console.WriteLn();  
- 405                         txt.readText("lexikon.txt");
- 406                         Console.WriteString("nach txt.readText");Console.WriteLn();             
- 407                 END;
- 408                 RETURN TRUE;
- 409         ELSE RETURN FALSE;
- 410         END;
- 411 END init;
- 412 
- 413 BEGIN (*Auto-generated*)
- 414         editorOrFile:=FALSE;shared:=NIL;txt:=NIL;startsymbol:=NIL;
- 415         Console.WriteString("EBNF Start ");Console.WriteLn();
- 416         (*text:=""; *)
- 417                 
- 418         IF init(editorOrFile,shared) THEN               
- 419                 Console.WriteString("EBNF nach Init");Console.WriteLn();                        
- 420                 (* interactive *)
- 421                 IF editorOrFile THEN 
- 422                         txt:=shared.texts;
- 423                         
- 424                 ELSE (* file only *)
- 425                         NEW(txt);
- 426                         Console.WriteString("nach new txt");Console.WriteLn();  
- 427                         txt.readText("lexikon.txt");
- 428                         Console.WriteString("nach txt.readText");Console.WriteLn();             
- 429                 END;
- 430                 IF parse(list.entry(*before: list onl<*)) THEN
- 431                         Console.WriteString(" parse ok")
- 432                 ELSE Console.WriteString(" parse failed");
- 433                 END;
- 434                 
- 435         END;
- 436         
- 437         
- 438         Console.WriteString("EBNF End");Console.WriteLn();
- 439 END Ebnf.
+ 370         (* alternative after fail, reset position in text *)
+ 371         txt.setTextPos(pos);
+ 372         (* no alt node is fail; if needed for distinction of case of empty node which is matched
+ 373                 without change of pos*)
+ 374         IF node.alt=NIL THEN RETURN FALSE
+ 375         ELSIF parse(node.alt) THEN RETURN TRUE
+ 376         ELSE txt.setTextPos(pos);RETURN FALSE;          
+ 377         END;
+ 378         
+ 379 END parse;
+ 380 
+ 381 
+ 382 PROCEDURE init*(sh:texts.Shared):BOOLEAN;
+ 383 
+ 384 BEGIN
+ 385         Console.WriteString("Init entry");Console.WriteLn();    
+ 386         IF Compile() THEN               
+ 387                 Console.WriteString("nach Compile");Console.WriteLn();                  
+ 388                 startsymbol:=list.entry;
+ 389                 shared:=sh;
+ 390                 txt:=shared.getSharedTexts();(* for getTextPos and setTextPos access*)
+**** ----------------------------^
+**** Identifier is not a fieldname of the current type
+**** Current type was <texts.Shared>
+ 391                 RegexMatching.GetStartCh(sh);
+ 392                 
+ 393                 RETURN TRUE;
+ 394         ELSE RETURN FALSE;
+ 395         END;
+ 396 END init;
+ 397 
+ 398 BEGIN (*Auto-generated*)
+ 399         shared:=NIL;txt:=NIL;startsymbol:=NIL;
+ 400         Console.WriteString("EBNF Start ");Console.WriteLn();
+ 401         
+ 402                 
+ 403         IF init(shared) THEN            
+ 404                 Console.WriteString("EBNF nach Init");Console.WriteLn();                        
+ 405                 (*  *)
+ 406                 (*txt:=shared.texts;*)
+ 407                 
+ 408                 IF parse(list.entry(* before: list only *)) THEN
+ 409                         Console.WriteString(" parse ok")
+ 410                 ELSE Console.WriteString(" parse failed");
+ 411                 END;
+ 412                 
+ 413         END;
+ 414         
+ 415         
+ 416         Console.WriteString("EBNF End");Console.WriteLn();
+ 417 END Ebnf.
 
-There were:  33 errors, and No warnings
+There were:  1 error, and No warnings
 
 

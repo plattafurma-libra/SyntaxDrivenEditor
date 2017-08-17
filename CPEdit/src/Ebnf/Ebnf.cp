@@ -56,16 +56,9 @@ VAR list,sentinel,h:Header;
     W:        TextsCP.Writer;       
    
     txt:texts.Texts;
-    editorOrFile:BOOLEAN;
     shared:texts.Shared;
     
   
-PROCEDURE SetEditorOrFile*(val:BOOLEAN);
-BEGIN
-	editorOrFile:=val;
-END SetEditorOrFile;
-    
-        
 PROCEDURE error(n: INTEGER); 
               VAR pos: INTEGER;       
 BEGIN pos := TextsCP.Pos(R); 
@@ -386,48 +379,32 @@ BEGIN (*parse*)
 END parse;
 
 
-PROCEDURE init*(edit:BOOLEAN;sh:texts.Shared):BOOLEAN;
+PROCEDURE init*(sh:texts.Shared):BOOLEAN;
 
 BEGIN
 	Console.WriteString("Init entry");Console.WriteLn();	
 	IF Compile() THEN 		
 		Console.WriteString("nach Compile");Console.WriteLn();			
-		(* interactive *)
-		IF edit THEN 
-			editorOrFile:=TRUE;
-			startsymbol:=list.entry;
-			shared:=sh;
-			txt:=shared.texts;(* for getTextPos and setTextPos access*)
-			RegexMatching.GetStartCh(sh);
-		ELSE (* file only *)
-			editorOrFile:=FALSE;
-			NEW(txt);
-			Console.WriteString("nach new txt");Console.WriteLn();	
-			txt.readText("lexikon.txt");
-			Console.WriteString("nach txt.readText");Console.WriteLn();		
-		END;
+		startsymbol:=list.entry;
+		shared:=sh;
+		txt:=shared.getSharedText();(* for getTextPos and setTextPos access*)
+		RegexMatching.GetStartCh(sh);
+		
 		RETURN TRUE;
 	ELSE RETURN FALSE;
 	END;
 END init;
 
 BEGIN (*Auto-generated*)
-	editorOrFile:=FALSE;shared:=NIL;txt:=NIL;startsymbol:=NIL;
+	shared:=NIL;txt:=NIL;startsymbol:=NIL;
 	Console.WriteString("EBNF Start ");Console.WriteLn();
-	(*text:=""; *)
+	
 		
-	IF init(editorOrFile,shared) THEN 		
+	IF init(shared) THEN 		
 		Console.WriteString("EBNF nach Init");Console.WriteLn();			
-		(* interactive *)
-		IF editorOrFile THEN 
-			txt:=shared.texts;
-			
-		ELSE (* file only *)
-			NEW(txt);
-			Console.WriteString("nach new txt");Console.WriteLn();	
-			txt.readText("lexikon.txt");
-			Console.WriteString("nach txt.readText");Console.WriteLn();		
-		END;
+		(*  *)
+		(*txt:=shared.texts;*)
+		
 		IF parse(list.entry(* before: list only *)) THEN
 			Console.WriteString(" parse ok")
 		ELSE Console.WriteString(" parse failed");

@@ -4,11 +4,8 @@ Listing:
    2 
    3 
    4 IMPORT RTS,Console,texts;
-**** -------------------^ Cannot open symbol file
-**** Filename <texts.cps>
    5 
    6 TYPE Reader* =RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; jReader:texts.Texts;END;
-**** Identifier not known in qualified scope-------------------------------------^
    7          Writer*= RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; END;
    8         
    9          
@@ -63,6 +60,9 @@ Listing:
   58                         RTS.Throw("Texts.Read EOF error");
   59                 ELSE
   60                         ch:=R.jReader.read();
+**** --------------------------------------^
+**** Identifier is not a fieldname of the current type
+**** Current type was <texts.Texts>
   61                         Console.Write(ch);
   62                         IF (ch=0DX) OR (ch=0AX) THEN ch:=' ';END;
   63                         IF R.jReader.eot THEN 
@@ -77,6 +77,6 @@ Listing:
   72         
   73 END TextsCP.
 
-There were:  2 errors, and No warnings
+There were:  1 error, and No warnings
 
 

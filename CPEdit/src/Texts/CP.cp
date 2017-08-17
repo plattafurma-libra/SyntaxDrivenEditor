@@ -57,7 +57,7 @@ BEGIN
 			Console.WriteString("Texts.Read EOF error for file: "+R.filename);
 			RTS.Throw("Texts.Read EOF error");
 		ELSE
-			ch:=R.jReader.read();
+			ch:=R.jReader.readCharFromFile();
 			Console.Write(ch);
 			IF (ch=0DX) OR (ch=0AX) THEN ch:=' ';END;
 			IF R.jReader.eot THEN 
