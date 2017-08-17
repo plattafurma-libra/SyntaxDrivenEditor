@@ -306,6 +306,13 @@ VAR res:BOOLEAN; pos:INTEGER;
 			Console.WriteInt(txt.getTextPos(),2);
 			Console.WriteString(" "+tNode.name$);
 			Console.WriteLn();
+			(*IF shared.backTrack THEN
+			
+				Console.WriteString(" backTrack");
+				Console.WriteLn();
+				RETURN FALSE;
+			END;
+			*)
 			index:=0;
 						
 			testBool:=RegexMatching.EditMatch(tNode.reg.regex,shared);
@@ -349,6 +356,14 @@ VAR res:BOOLEAN; pos:INTEGER;
 	
 
 BEGIN (*parse*)
+	IF shared.backTrack THEN
+		IF node#list.entry THEN RETURN FALSE
+		ELSE
+			txt.setTextPos(0);
+			Console.WriteString("parse after backtrack restart");Console.WriteLn();
+			shared.backTrack:=FALSE;
+		END;
+	END;
 	Console.WriteString("parse (*hd.name: *)"(*+hd.name*));Console.WriteLn();
 	pos:=txt.getTextPos();
 	res:=FALSE;	

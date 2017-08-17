@@ -351,76 +351,83 @@ Listing:
  349         
  350 
  351 BEGIN (*parse*)
- 352         Console.WriteString("parse (*hd.name: *)"(*+hd.name*));Console.WriteLn();
- 353         pos:=txt.getTextPos();
- 354         res:=FALSE;     
- 355         IF node = NIL THEN RETURN TRUE
- 356         ELSIF node IS Terminal THEN
- 357                         res:=match(node(Terminal));
- 358                         Console.WriteString("parse res after MatchProc: ");
- 359                         Console.WriteInt(txt.getTextPos(),2);Console.WriteLn();                 
- 360                 (* depth first recursion for nonterminal *)
- 361         ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
- 362         END;
- 363         
- 364         (* bredth second recursion*)
- 365         IF res THEN res:=parse(node.next);
- 366                 IF res THEN RETURN TRUE;
- 367                 END;
- 368         END;
- 369         
- 370         (* alternative after fail, reset position in text *)
- 371         txt.setTextPos(pos);
- 372         (* no alt node is fail; if needed for distinction of case of empty node which is matched
- 373                 without change of pos*)
- 374         IF node.alt=NIL THEN RETURN FALSE
- 375         ELSIF parse(node.alt) THEN RETURN TRUE
- 376         ELSE txt.setTextPos(pos);RETURN FALSE;          
- 377         END;
- 378         
- 379 END parse;
- 380 
- 381 
- 382 PROCEDURE init*(sh:texts.Shared):BOOLEAN;
- 383 
- 384 BEGIN
- 385         Console.WriteString("Init entry");Console.WriteLn();    
- 386         IF Compile() THEN               
- 387                 Console.WriteString("nach Compile");Console.WriteLn();                  
- 388                 startsymbol:=list.entry;
- 389                 shared:=sh;
- 390                 txt:=shared.getSharedTexts();(* for getTextPos and setTextPos access*)
-**** ----------------------------^
-**** Identifier is not a fieldname of the current type
-**** Current type was <texts.Shared>
- 391                 RegexMatching.GetStartCh(sh);
- 392                 
- 393                 RETURN TRUE;
- 394         ELSE RETURN FALSE;
- 395         END;
- 396 END init;
- 397 
- 398 BEGIN (*Auto-generated*)
- 399         shared:=NIL;txt:=NIL;startsymbol:=NIL;
- 400         Console.WriteString("EBNF Start ");Console.WriteLn();
- 401         
- 402                 
- 403         IF init(shared) THEN            
- 404                 Console.WriteString("EBNF nach Init");Console.WriteLn();                        
- 405                 (*  *)
- 406                 (*txt:=shared.texts;*)
- 407                 
- 408                 IF parse(list.entry(* before: list only *)) THEN
- 409                         Console.WriteString(" parse ok")
- 410                 ELSE Console.WriteString(" parse failed");
- 411                 END;
- 412                 
- 413         END;
- 414         
- 415         
- 416         Console.WriteString("EBNF End");Console.WriteLn();
- 417 END Ebnf.
+ 352         IF shared.backTrack THEN
+ 353                 IF node#list.entry THEN RETURN FALSE
+ 354                 ELSE
+ 355                         txt.setTextPos(0);
+ 356                         Console.WriteString("parse after backtrack restart");Console.WriteLn();
+ 357                         shared.backTrack=false;
+**** error in IdentStatement-----------------^
+**** Identifier not known in this scope-------^
+ 358                 END;
+ 359         END;
+ 360         Console.WriteString("parse (*hd.name: *)"(*+hd.name*));Console.WriteLn();
+ 361         pos:=txt.getTextPos();
+ 362         res:=FALSE;     
+ 363         IF node = NIL THEN RETURN TRUE
+ 364         ELSIF node IS Terminal THEN
+ 365                         res:=match(node(Terminal));
+ 366                         Console.WriteString("parse res after MatchProc: ");
+ 367                         Console.WriteInt(txt.getTextPos(),2);Console.WriteLn();                 
+ 368                 (* depth first recursion for nonterminal *)
+ 369         ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
+ 370         END;
+ 371         
+ 372         (* bredth second recursion*)
+ 373         IF res THEN res:=parse(node.next);
+ 374                 IF res THEN RETURN TRUE;
+ 375                 END;
+ 376         END;
+ 377         
+ 378         (* alternative after fail, reset position in text *)
+ 379         txt.setTextPos(pos);
+ 380         (* no alt node is fail; if needed for distinction of case of empty node which is matched
+ 381                 without change of pos*)
+ 382         IF node.alt=NIL THEN RETURN FALSE
+ 383         ELSIF parse(node.alt) THEN RETURN TRUE
+ 384         ELSE txt.setTextPos(pos);RETURN FALSE;          
+ 385         END;
+ 386         
+ 387 END parse;
+ 388 
+ 389 
+ 390 PROCEDURE init*(sh:texts.Shared):BOOLEAN;
+ 391 
+ 392 BEGIN
+ 393         Console.WriteString("Init entry");Console.WriteLn();    
+ 394         IF Compile() THEN               
+ 395                 Console.WriteString("nach Compile");Console.WriteLn();                  
+ 396                 startsymbol:=list.entry;
+ 397                 shared:=sh;
+ 398                 txt:=shared.getSharedText();(* for getTextPos and setTextPos access*)
+ 399                 RegexMatching.GetStartCh(sh);
+ 400                 
+ 401                 RETURN TRUE;
+ 402         ELSE RETURN FALSE;
+ 403         END;
+ 404 END init;
+ 405 
+ 406 BEGIN (*Auto-generated*)
+ 407         shared:=NIL;txt:=NIL;startsymbol:=NIL;
+ 408         Console.WriteString("EBNF Start ");Console.WriteLn();
+ 409         
+ 410                 
+ 411         IF init(shared) THEN            
+ 412                 Console.WriteString("EBNF nach Init");Console.WriteLn();                        
+ 413                 (*  *)
+ 414                 (*txt:=shared.texts;*)
+ 415                 
+ 416                 IF parse(list.entry(* before: list only *)) THEN
+ 417                         Console.WriteString(" parse ok")
+ 418                 ELSE Console.WriteString(" parse failed");
+ 419                 END;
+ 420                 
+ 421         END;
+ 422         
+ 423         
+ 424         Console.WriteString("EBNF End");Console.WriteLn();
+ 425 END Ebnf.
 
-There were:  1 error, and No warnings
+There were:  2 errors, and No warnings
 
 

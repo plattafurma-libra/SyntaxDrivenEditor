@@ -8,6 +8,7 @@ public class Shared {
 	private Texts sharedText;// sharedText.textAsCharArray gets (char by char) the chars edited in swtText of
 	// the SWT Text Type in the SWT Gui
 	
+	public boolean backTrack=false;
 	
 	public Shared(){
 		this.sharedText=new Texts();		
@@ -27,13 +28,21 @@ public class Shared {
 		this.sharedText.setTextCharAtPos(ch, sharedText.getTextLen());
 		//sharedText.text[sharedText.getTextLen()]=ch;
 		this.sharedText.incTextLen();
-		this.available=sharedText.getTextLen()>sharedText.getTextPos();		
+		this.available=sharedText.getTextLen()>sharedText.getTextPos();	
+		// backtrack if '$'
+		if(ch=='$') this.backTrack=true;
 	}
 	
 	/***********************************************************************************/
 	/* proposal for draft's jason, s. comment above  */
-	public void setCharFromJson(char ch){
-		// TODO
+	public void setCharFromJson(RichChar richChar){
+		// 
+		System.out.println("Shared.charFromSWTText ch "+richChar.ch);
+		this.sharedText.setTextCharAtPos(richChar.ch, sharedText.getTextLen());
+		this.sharedText.incTextLen();
+		this.available=sharedText.getTextLen()>sharedText.getTextPos();	
+		// backtrack if '$'
+		if(richChar.ch=='$') this.backTrack=true;
 	}
 	
 	/* End of Json interfacing    */
