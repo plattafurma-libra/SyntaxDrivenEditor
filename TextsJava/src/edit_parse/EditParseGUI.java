@@ -28,10 +28,19 @@ public class EditParseGUI {
 		   
 		   	char lastEditedChar=swtText.getText().charAt(swtText.getText().length()-1);
 		    editParse.shared.setCharFromSWTText(lastEditedChar);	
+		    // Vogt, Schildkamp:
+		    // swtText kann auch ganz hier gelöscht werden.
+		    // (bislang bleibt der Text erhalten und wird wieder
+		    // geparsed)
+		    // dann sollte editParse.shared.text.textLength auf 0 gesetzt werden
+		    // dafür in Texts neue setter methode;
+		    // private text ist von  shared über getText Methode zugreifbar
+		    //
 		    if (lastEditedChar=='$'){
 		    	// delete last char '$'
 		    	String text = swtText.getText(0,swtText.getText().length()-2);
 		    	swtText.setText(text);
+		    	// das wird in EBNF und in Regex für backTrack gebraucht.
 		    	editParse.shared.backTrack=true;
 		    	System.out.println("swtText after '$' entered: "+swtText.getText());
 		    }

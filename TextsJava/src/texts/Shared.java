@@ -36,6 +36,7 @@ public class Shared {
 	}
 	
 	/***********************************************************************************/
+	/* Vogt, Schildkamp */
 	/* proposal for draft's jason, s. comment above  */
 	public void setCharFromJson(RichChar richChar){
 		// 
@@ -43,7 +44,10 @@ public class Shared {
 		this.sharedText.setTextCharAtPos(richChar.ch, sharedText.getTextLen());
 		this.sharedText.incTextLen();
 		this.available=sharedText.getTextLen()>sharedText.getTextPos();	
-		// backtrack if '$'
+		// backtrack if '$'; alternativ bereits in JavaJson setzen, wie
+		// oben in setCharFromSWTText vorausgesetzt und in
+		// EditParseGUI valueChanged implementiert
+		//
 		if(richChar.ch=='$') this.backTrack=true;
 	}
 	
