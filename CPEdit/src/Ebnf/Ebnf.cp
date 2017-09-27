@@ -294,7 +294,7 @@ END Compile;
 
 PROCEDURE parse*(node:Symbol):BOOLEAN;
 
-VAR res:BOOLEAN; pos:INTEGER;
+VAR res:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
 
 		PROCEDURE match(tNode:Terminal):BOOLEAN;
 	
@@ -328,8 +328,10 @@ VAR res:BOOLEAN; pos:INTEGER;
 			Console.WriteLn();
 			Console.WriteString("match ok for "+tNode.name$);
 			(*Console.WriteInt(txt.getTextPos(),2);*) Console.WriteLn();
-			IF shared.backTrack THEN RETURN FALSE ELSE
-				RETURN TRUE;
+			IF shared.backTrack THEN 
+				RETURN FALSE 
+			ELSE
+				RETURN (*TRUE*) testBool;
 			END;		
 		END match;
 	
@@ -344,15 +346,23 @@ BEGIN (*parse*)
 			shared.backTrack:=FALSE;
 		END;
 	END;
-	Console.WriteString("parse (*hd.name: *)"(*+hd.name*));Console.WriteLn();
+	IF node IS Terminal THEN
+		nodeName:=node(Terminal).name$
+	ELSE nodeName:=node(Nonterminal).this.name$;
+	END;
+	Console.WriteString("parse node: "+nodeName);Console.WriteLn();
 	pos:=txt.getTextPos();
 	res:=FALSE;	
 	IF node = NIL THEN RETURN TRUE
 	ELSIF node IS Terminal THEN
 			res:=match(node(Terminal));
 			IF shared.backTrack THEN RETURN FALSE END;
-			Console.WriteString("parse res after MatchProc: ");
-			Console.WriteInt(txt.getTextPos(),2);Console.WriteLn();			
+			Console.WriteString("parse res after MatchProc Pos: ");
+			Console.WriteInt(txt.getTextPos(),2);
+			IF res THEN Console.WriteString(" TRUE")
+			ELSE Console.WriteString(" FALSE");
+			END;
+			Console.WriteLn();			
 		(* depth first recursion for nonterminal *)
 	ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
 	END;
@@ -363,7 +373,8 @@ BEGIN (*parse*)
 		ELSIF res THEN RETURN TRUE;
 		END;
 	END;
-	IF shared.backTrack THEN RETURN FALSE END;
+	IF shared.backTrack THEN RETURN FALSE 
+	END;
 	(* alternative after fail, reset position in text *)
 	txt.setTextPos(pos);
 	(* no alt node is fail; if needed for distinction of case of empty node which is matched
@@ -395,7 +406,7 @@ BEGIN
 END init;
 
 BEGIN (*Auto-generated*)
-	shared:=NIL;txt:=NIL;startsymbol:=NIL;
+	(*shared:=NIL;txt:=NIL;startsymbol:=NIL;
 	Console.WriteString("EBNF Start ");Console.WriteLn();
 	
 		
@@ -413,4 +424,5 @@ BEGIN (*Auto-generated*)
 	
 	
 	Console.WriteString("EBNF End");Console.WriteLn();
+	*)
 END Ebnf.
