@@ -2,8 +2,7 @@ package texts;
 
 public class Shared {
 
-	
-	
+		
 	private boolean available=false;
 	private Texts sharedText;// sharedText.textAsCharArray gets (char by char) the chars edited in swtText of
 	// the SWT Text Type in the SWT Gui

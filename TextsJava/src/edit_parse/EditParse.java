@@ -58,24 +58,27 @@ public class EditParse {
 			   System.out.println("word exit");
 		   }// word
 		   
-		   private void editSyntaxDriven (){
-			  System.out.println("editSyntaxDriven vor parse ok");
+		   private void syntaxDrivenEdit (){
+			  System.out.println("EditParse.syntaxDrivenEdit vor Ebnf.parse");
 			  //this.shared.texts.textLen=0;
 			  while (true){
 				  counter++;
 				  if (counter>100){stop=true;break;};
 				  try {
 					  if (Ebnf.parse(Ebnf.startsymbol)) 
-						  {System.out.println("parse ok");break;}
+						  {System.out.println("EditParse.syntaxDrivenEdit Ebnf.parse true");break;}
+					  else 
+					  	{System.out.println("EditParse.syntaxDrivenEdit Ebnf.parse false");
+					  	break;}
 			  			  
 				  } catch (Exception e){
-				  }stop=true;
+				  }stop=true; 
 			  } 
 		   }//editSyntaxDriven
 		   
 		   public void run() {
 			  Ebnf.init(this.shared);
-			  System.out.println("TestEditParse ThrWord Thread run entry");
+			  System.out.println("TestEditParse after Ebnf.Init ThrWord Thread run entry");
 			  while(!stop){
 				  if (counter >1000)stop=true;
 				  System.out.println("TestEditParse ThrWord counter: "+counter);
@@ -86,7 +89,7 @@ public class EditParse {
 					 
 					  //char ch= shared.getSym();
 					  //word();
-					  editSyntaxDriven();
+					  syntaxDrivenEdit();
 					  System.out.println("TestEditParse ThrWord nach word");
 					  sleep(10);					  
 				  }
