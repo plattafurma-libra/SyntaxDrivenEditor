@@ -294,11 +294,11 @@ END Compile;
 
 PROCEDURE parse*(node:Symbol):BOOLEAN;
 
-VAR res:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
+VAR resParse:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
 
 		PROCEDURE match(tNode:Terminal):BOOLEAN;
 	
-		VAR index:INTEGER;ch:CHAR;testChar:CHAR;testBool:BOOLEAN;
+		VAR index:INTEGER;ch:CHAR;testChar:CHAR;resMatch:BOOLEAN;
 	
 		(*          *)
 		BEGIN
@@ -315,23 +315,20 @@ VAR res:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
 			
 			index:=0;
 						
-			testBool:=RegexMatching.EditMatch(tNode.reg.regex,shared);
-			IF testBool THEN 
-				Console.WriteString(" nach EditMatch testBool true");
+			resMatch:=RegexMatching.EditMatch(tNode.reg.regex,shared);
+			IF resMatch THEN 
+				Console.WriteString(" after EditMatch resMatch true");
 			ELSE
-				Console.WriteString(" nach EditMatch testBool false");
+				Console.WriteString(" after EditMatch resMatch false");
 			END;
-			Console.WriteLn();
-			(*
 			
-			*)
+			Console.WriteString(" for "+tNode.name$);
+			(*Console.WriteInt(txt.getTextPos(),2);*) 
 			Console.WriteLn();
-			Console.WriteString("match ok for "+tNode.name$);
-			(*Console.WriteInt(txt.getTextPos(),2);*) Console.WriteLn();
 			IF shared.backTrack THEN 
 				RETURN FALSE 
 			ELSE
-				RETURN (*TRUE*) testBool;
+				RETURN resMatch;
 			END;		
 		END match;
 	
@@ -352,25 +349,25 @@ BEGIN (*parse*)
 	END;
 	Console.WriteString("parse node: "+nodeName);Console.WriteLn();
 	pos:=txt.getTextPos();
-	res:=FALSE;	
+	resParse:=FALSE;	
 	IF node = NIL THEN RETURN TRUE
 	ELSIF node IS Terminal THEN
-			res:=match(node(Terminal));
+			resParse:=match(node(Terminal));
 			IF shared.backTrack THEN RETURN FALSE END;
-			Console.WriteString("parse res after MatchProc Pos: ");
+			Console.WriteString("parse resParse after match Pos: ");
 			Console.WriteInt(txt.getTextPos(),2);
-			IF res THEN Console.WriteString(" TRUE")
+			IF resParse THEN Console.WriteString(" TRUE")
 			ELSE Console.WriteString(" FALSE");
 			END;
 			Console.WriteLn();			
 		(* depth first recursion for nonterminal *)
-	ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
+	ELSE resParse:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
 	END;
 	IF shared.backTrack THEN RETURN FALSE END;
 	(* bredth second recursion*)
-	IF res THEN res:=parse(node.next);
+	IF resParse THEN resParse:=parse(node.next);
 		IF shared.backTrack THEN RETURN FALSE
-		ELSIF res THEN RETURN TRUE;
+		ELSIF resParse THEN RETURN TRUE;
 		END;
 	END;
 	IF shared.backTrack THEN RETURN FALSE 
@@ -406,7 +403,8 @@ BEGIN
 END init;
 
 BEGIN (*Auto-generated*)
-	(*shared:=NIL;txt:=NIL;startsymbol:=NIL;
+	(********************************************************************
+	shared:=NIL;txt:=NIL;startsymbol:=NIL;
 	Console.WriteString("EBNF Start ");Console.WriteLn();
 	
 		
@@ -424,5 +422,5 @@ BEGIN (*Auto-generated*)
 	
 	
 	Console.WriteString("EBNF End");Console.WriteLn();
-	*)
+	************************************************************************)
 END Ebnf.

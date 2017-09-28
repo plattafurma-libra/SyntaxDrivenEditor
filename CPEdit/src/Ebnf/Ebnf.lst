@@ -296,11 +296,11 @@ Listing:
  294 
  295 PROCEDURE parse*(node:Symbol):BOOLEAN;
  296 
- 297 VAR res:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
+ 297 VAR resParse:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
  298 
  299                 PROCEDURE match(tNode:Terminal):BOOLEAN;
  300         
- 301                 VAR index:INTEGER;ch:CHAR;testChar:CHAR;testBool:BOOLEAN;
+ 301                 VAR index:INTEGER;ch:CHAR;testChar:CHAR;resMatch:BOOLEAN;
  302         
  303                 (*          *)
  304                 BEGIN
@@ -317,118 +317,123 @@ Listing:
  315                         
  316                         index:=0;
  317                                                 
- 318                         testBool:=RegexMatching.EditMatch(tNode.reg.regex,shared);
- 319                         IF testBool THEN 
- 320                                 Console.WriteString(" nach EditMatch testBool true");
+ 318                         resMatch:=RegexMatching.EditMatch(tNode.reg.regex,shared);
+ 319                         IF resMatch THEN 
+ 320                                 Console.WriteString(" after EditMatch resMatch true");
  321                         ELSE
- 322                                 Console.WriteString(" nach EditMatch testBool false");
+ 322                                 Console.WriteString(" after EditMatch resMatch false");
  323                         END;
- 324                         Console.WriteLn();
- 325                         (*
- 326                         
- 327                         *)
- 328                         Console.WriteLn();
- 329                         Console.WriteString("match ok for "+tNode.name$);
- 330                         (*Console.WriteInt(txt.getTextPos(),2);*) Console.WriteLn();
- 331                         IF shared.backTrack THEN 
- 332                                 RETURN FALSE 
- 333                         ELSE
- 334                                 RETURN (*TRUE*) testBool;
- 335                         END;            
- 336                 END match;
- 337         
- 338         
- 339 
- 340 BEGIN (*parse*)
- 341         IF shared.backTrack THEN
- 342                 IF node#list.entry THEN RETURN FALSE
- 343                 ELSE
- 344                         txt.setTextPos(0);
- 345                         Console.WriteString("parse after backtrack restart");Console.WriteLn();
- 346                         shared.backTrack:=FALSE;
- 347                 END;
- 348         END;
- 349         IF node IS Terminal THEN
- 350                 nodeName:=node(Terminal).name$
- 351         ELSE nodeName:=node(Nonterminal).this.name$;
- 352         END;
- 353         Console.WriteString("parse node: "+nodeName);Console.WriteLn();
- 354         pos:=txt.getTextPos();
- 355         res:=FALSE;     
- 356         IF node = NIL THEN RETURN TRUE
- 357         ELSIF node IS Terminal THEN
- 358                         res:=match(node(Terminal));
- 359                         IF shared.backTrack THEN RETURN FALSE END;
- 360                         Console.WriteString("parse res after MatchProc Pos: ");
- 361                         Console.WriteInt(txt.getTextPos(),2);
- 362                         IF res THEN WriteString(" TRUE")
-**** Identifier not known in this scope--^
- 363                         ELSE WriteString(" FALSE");
-**** -----------------------------^ Identifier not known in this scope
- 364                         END;
- 365                         Console.WriteLn();                      
- 366                 (* depth first recursion for nonterminal *)
- 367         ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
- 368         END;
- 369         IF shared.backTrack THEN RETURN FALSE END;
- 370         (* bredth second recursion*)
- 371         IF res THEN res:=parse(node.next);
- 372                 IF shared.backTrack THEN RETURN FALSE
- 373                 ELSIF res THEN RETURN TRUE;
- 374                 END;
- 375         END;
- 376         IF shared.backTrack THEN RETURN FALSE END;
- 377         (* alternative after fail, reset position in text *)
- 378         txt.setTextPos(pos);
- 379         (* no alt node is fail; if needed for distinction of case of empty node which is matched
- 380                 without change of pos*)
- 381         IF node.alt=NIL THEN RETURN FALSE
- 382         ELSIF parse(node.alt) THEN 
- 383                 IF shared.backTrack THEN RETURN FALSE ELSE RETURN TRUE
- 384                 END;
- 385         ELSE txt.setTextPos(pos);RETURN FALSE;          
- 386         END;
- 387         
- 388 END parse;
- 389 
+ 324                         
+ 325                         Console.WriteString(" for "+tNode.name$);
+ 326                         (*Console.WriteInt(txt.getTextPos(),2);*) 
+ 327                         Console.WriteLn();
+ 328                         IF shared.backTrack THEN 
+ 329                                 RETURN FALSE 
+ 330                         ELSE
+ 331                                 RETURN resMatch;
+ 332                         END;            
+ 333                 END match;
+ 334         
+ 335         
+ 336 
+ 337 BEGIN (*parse*)
+ 338         IF shared.backTrack THEN
+ 339                 IF node#list.entry THEN RETURN FALSE
+ 340                 ELSE
+ 341                         txt.setTextPos(0);
+ 342                         Console.WriteString("parse after backtrack restart");Console.WriteLn();
+ 343                         shared.backTrack:=FALSE;
+ 344                 END;
+ 345         END;
+ 346         IF node IS Terminal THEN
+ 347                 nodeName:=node(Terminal).name$
+ 348         ELSE nodeName:=node(Nonterminal).this.name$;
+ 349         END;
+ 350         Console.WriteString("parse node: "+nodeName);Console.WriteLn();
+ 351         pos:=txt.getTextPos();
+ 352         res:=FALSE;     
+**** --------^ Identifier not known in this scope
+ 353         IF node = NIL THEN RETURN TRUE
+ 354         ELSIF node IS Terminal THEN
+ 355                         res:=match(node(Terminal));
+**** ------------------------^ Identifier not known in this scope
+ 356                         IF shared.backTrack THEN RETURN FALSE END;
+ 357                         Console.WriteString("parse res after MatchProc Pos: ");
+ 358                         Console.WriteInt(txt.getTextPos(),2);
+ 359                         IF res THEN Console.WriteString(" TRUE")
+**** ---------------------------^ Identifier not known in this scope
+ 360                         ELSE Console.WriteString(" FALSE");
+ 361                         END;
+ 362                         Console.WriteLn();                      
+ 363                 (* depth first recursion for nonterminal *)
+ 364         ELSE res:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
+**** -------------^ Identifier not known in this scope
+ 365         END;
+ 366         IF shared.backTrack THEN RETURN FALSE END;
+ 367         (* bredth second recursion*)
+ 368         IF res THEN res:=parse(node.next);
+**** -----------^ Identifier not known in this scope
+**** --------------------^ Identifier not known in this scope
+ 369                 IF shared.backTrack THEN RETURN FALSE
+ 370                 ELSIF res THEN RETURN TRUE;
+**** ----------------------^ Identifier not known in this scope
+ 371                 END;
+ 372         END;
+ 373         IF shared.backTrack THEN RETURN FALSE 
+ 374         END;
+ 375         (* alternative after fail, reset position in text *)
+ 376         txt.setTextPos(pos);
+ 377         (* no alt node is fail; if needed for distinction of case of empty node which is matched
+ 378                 without change of pos*)
+ 379         IF node.alt=NIL THEN RETURN FALSE
+ 380         ELSIF parse(node.alt) THEN 
+ 381                 IF shared.backTrack THEN RETURN FALSE ELSE RETURN TRUE
+ 382                 END;
+ 383         ELSE txt.setTextPos(pos);RETURN FALSE;          
+ 384         END;
+ 385         
+ 386 END parse;
+ 387 
+ 388 
+ 389 PROCEDURE init*(sh:texts.Shared):BOOLEAN;
  390 
- 391 PROCEDURE init*(sh:texts.Shared):BOOLEAN;
- 392 
- 393 BEGIN
- 394         Console.WriteString("Init entry");Console.WriteLn();    
- 395         IF Compile() THEN               
- 396                 Console.WriteString("nach Compile");Console.WriteLn();                  
- 397                 startsymbol:=list.entry;
- 398                 shared:=sh;
- 399                 txt:=shared.getSharedText();(* for getTextPos and setTextPos access*)
- 400                 RegexMatching.GetStartCh(sh);
- 401                 
- 402                 RETURN TRUE;
- 403         ELSE RETURN FALSE;
- 404         END;
- 405 END init;
- 406 
- 407 BEGIN (*Auto-generated*)
- 408         shared:=NIL;txt:=NIL;startsymbol:=NIL;
- 409         Console.WriteString("EBNF Start ");Console.WriteLn();
- 410         
- 411                 
- 412         IF init(shared) THEN            
- 413                 Console.WriteString("EBNF nach Init");Console.WriteLn();                        
- 414                 (*  *)
- 415                 (*txt:=shared.texts;*)
- 416                 
- 417                 IF parse(list.entry(* before: list only *)) THEN
- 418                         Console.WriteString(" parse ok")
- 419                 ELSE Console.WriteString(" parse failed");
- 420                 END;
- 421                 
- 422         END;
+ 391 BEGIN
+ 392         Console.WriteString("Init entry");Console.WriteLn();    
+ 393         IF Compile() THEN               
+ 394                 Console.WriteString("nach Compile");Console.WriteLn();                  
+ 395                 startsymbol:=list.entry;
+ 396                 shared:=sh;
+ 397                 txt:=shared.getSharedText();(* for getTextPos and setTextPos access*)
+ 398                 RegexMatching.GetStartCh(sh);
+ 399                 
+ 400                 RETURN TRUE;
+ 401         ELSE RETURN FALSE;
+ 402         END;
+ 403 END init;
+ 404 
+ 405 BEGIN (*Auto-generated*)
+ 406         (********************************************************************
+ 407         shared:=NIL;txt:=NIL;startsymbol:=NIL;
+ 408         Console.WriteString("EBNF Start ");Console.WriteLn();
+ 409         
+ 410                 
+ 411         IF init(shared) THEN            
+ 412                 Console.WriteString("EBNF nach Init");Console.WriteLn();                        
+ 413                 (*  *)
+ 414                 (*txt:=shared.texts;*)
+ 415                 
+ 416                 IF parse(list.entry(* before: list only *)) THEN
+ 417                         Console.WriteString(" parse ok")
+ 418                 ELSE Console.WriteString(" parse failed");
+ 419                 END;
+ 420                 
+ 421         END;
+ 422         
  423         
- 424         
- 425         Console.WriteString("EBNF End");Console.WriteLn();
+ 424         Console.WriteString("EBNF End");Console.WriteLn();
+ 425         ************************************************************************)
  426 END Ebnf.
 
-There were:  2 errors, and No warnings
+There were:  7 errors, and No warnings
 
 
