@@ -8,7 +8,7 @@ import java.io.FileReader;
 /* 
  * Texts contains an array textAsCharArray for storing characters entered by the editor.
  * textAsCharArray is a private. It is accessed by getters and setters, e.g. for parsing.
- * Texts is part (attribute) of the Shared class by which htread communication is done
+ * Texts is part (attribute) of the Shared class by which thread communication is done
  */
 public class Texts {
 
@@ -16,43 +16,54 @@ public class Texts {
 	public boolean eot;
 	private char[] textAsCharArray;
 	private int textLen;
-	private int textPos;
+	private int parsePos;
 	
 	// cstr
 	public Texts() {
-		this.textAsCharArray=new char[10000];
+		this.textAsCharArray=new char[1000000];
 		textLen=0;
-		textPos=0;
+		parsePos=0;
 	}
 	
-	public void incTextLen() {
-		this.textLen++;
+	
+	public char[] getTextAsCharArray() {
+		return this.textAsCharArray;
 	}
 	
+	
+	public void setTextAsCharArray(String str) {
+		this.textAsCharArray = str.toCharArray();
+		this.textLen=str.length();
+	}
+		
+		
 	public int getTextLen(){
 		return this.textLen;
 	}
 	
-	public int getTextPos(){
-		return textPos;
+	
+	public int getParsePos(){
+		return parsePos;
 	}
 	
-	public void setTextPos(int pos){
-		this.textPos=pos;
+	public void setParsePos(int pos){
+		this.parsePos=pos;
 	}
 	
-	public void incTextPos(){
-		this.textPos++;
+	public void incParsePos(){
+		this.parsePos++;
 	}
 	
 	public char getTextChar(){
 		//todo error if textPos>= textLen
-		char ch=this.textAsCharArray[textPos];
-		textPos++;
+		char ch=this.textAsCharArray[parsePos];
+		parsePos++;
 		return ch;
 	}
 	
 	public char getTextCharAtPos(int pos){
+		System.out.println("texts.Text.getTextCharAtPos pos: "+pos+ " ch:"+
+		this.textAsCharArray[pos]);
 		if (pos >=this.textLen) 
 			//toDo
 			{int i = 10/0;return 0;}

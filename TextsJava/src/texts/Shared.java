@@ -3,11 +3,22 @@ package texts;
 public class Shared {
 
 		
-	private boolean available=false;
+	private static boolean available=false;
+	
+	
 	private Texts sharedText;// sharedText.textAsCharArray gets (char by char) the chars edited in swtText of
 	// the SWT Text Type in the SWT Gui
 	
+	//private int internalCaretPos=0;
+	
 	public boolean backTrack=false;
+	// parsePos is position of sign processed in EBNF parser;
+	// parsePos is compared to caretPos;
+	// if caretPos is less than parsePos, backTrack is set to true and parsePos is reset.
+	// if caretPos is greater then parsePos, available is true
+	//
+	
+	//public int parsePos=0;//init
 	
 	public Shared(){
 		this.sharedText=new Texts();		
@@ -22,14 +33,28 @@ public class Shared {
 	// this might be a similar  interface to draft's json objects and their difference in order to 
 	// get new chars edited in draft current block
 	
-	public void setCharFromSWTText(char ch){
-		System.out.println("Shared.charFromSWTText ch "+ch);
-		// backtrack if '$'
-		if(!this.backTrack) {
-			this.sharedText.setTextCharAtPos(ch, sharedText.getTextLen());
-			//sharedText.text[sharedText.getTextLen()]=ch;
-			this.sharedText.incTextLen();
-			this.available=sharedText.getTextLen()>sharedText.getTextPos();	
+	public void setFromSWTText(String textStr,int caretPos,int len){
+		// System.out.println("Shared.charFromSWTText ch "+ch);
+		// backtrack for insert
+		if (!this.backTrack) {
+			if (this.sharedText.getParsePos() > caretPos) {
+				this.backTrack=true;
+				// parsePos is reset in EBNF parse at the end of backtrack
+				System.out.println("Shared.setFromSWTText backTrack true");
+			}
+		}
+		
+		//System.out.println("Shared.setFromSWTText parsePos: "+
+		//this.sharedText.getParsePos());
+		this.sharedText.setTextAsCharArray(textStr);
+		//this.internalCaretPos=caretPos;
+		System.out.println("Shared.setFromSWTText textStr: "+textStr+
+				" parsePos: "+this.sharedText.getParsePos()+ " caretPosition: "+
+				caretPos);
+		// backTrack is set to false after backtrack in ebnf.parse
+		if(this.backTrack) this.available = true;
+		else {			
+			this.available=caretPos >= this.sharedText.getParsePos();	
 		}
 		
 	}
@@ -37,6 +62,8 @@ public class Shared {
 	/***********************************************************************************/
 	/* Vogt, Schildkamp */
 	/* proposal for draft's jason, s. comment above  */
+	
+	/******neu s.o.
 	public void setCharFromJson(RichChar richChar){
 		// 
 		System.out.println("Shared.charFromSWTText ch "+richChar.ch);
@@ -50,16 +77,17 @@ public class Shared {
 		if(richChar.ch=='$') this.backTrack=true;
 	}
 	
-	/* End of Json interfacing    */
-	/***********************************************************************************/
+	// End of Json interfacing   
+	***********************************************************************************/
 	
 	public synchronized char getSym(){
 		System.out.println("Shared.getSym entry");
+		if (sharedText.getTextLen()>sharedText.getParsePos()) available=true;
 		try {
 			System.out.println("Shared.getSym nach try vor while");
 			while (!available) Thread.sleep(100);
-			System.out.println("Shared.getSym last ch "+
-			this.sharedText.getTextCharAtPos(sharedText.getTextPos()));
+			System.out.println("Shared.getSym pos "+
+			this.sharedText.getParsePos());
 		}
 		catch (InterruptedException e){
 			
@@ -67,21 +95,27 @@ public class Shared {
 		available=false;
 		//
 		
-		char ch= this.sharedText.getTextCharAtPos(this.sharedText.getTextPos());
+		
+		char ch= this.sharedText.getTextCharAtPos(this.sharedText.getParsePos());
+		this.sharedText.incParsePos();
 		// sharedText.text[sharedText.getTextPos()];
-		sharedText.incTextPos();
+		//this.sharedText.incTextPos();
 		return ch;
 		
 	}
 
-	          
-	public synchronized char getCharAtTextPos(int pos){
-		
-		if (pos <this.sharedText.getTextLen()){
-			return this.sharedText.getTextCharAtPos(pos);
+	/* ersetzen durch getSym, checken */          
+	public synchronized char getCharAtTextPos(int parsePos){
+		//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+		/*if (parsePos < this.internalCaretPos){
+			return this.sharedText.getTextCharAtPos(parsePos);
 		} 
-		else return this.getSym();
+		else*/ return this.getSym();
 		
 	
+	}
+	
+	public static boolean available() {
+		return available;
 	}
 }

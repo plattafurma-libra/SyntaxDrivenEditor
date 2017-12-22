@@ -1,7 +1,12 @@
 MODULE Ebnf;
 
-
-
+(* TO DO for terminal nodes which are matched in Regex:
+Font Description: 
+1. Size:(e.g., 12 point vs. 16 point), 
+2. Style (e.g., plain vs. italic), 
+3. Typeface (e.g., Times vs. Helvetica)
+4. Weight (e.g., bold vs. normal).
+*)
 
 (* code mainly from Niklaus Wirth Grundlagen und Techniken des Compilerbaus, from English
 version Compiler Construction, too (s. http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) and for more implementation
@@ -36,11 +41,14 @@ TYPE Identifier = ARRAY IdLen OF CHAR;
      END;
      
      Terminal=POINTER TO RECORD(Symbol) sym:INTEGER;name:ARRAY IdLen OF CHAR; 
+     	isString:BOOLEAN (* needed für Regex processing, strings are treated other than
+     	regex which start with '['  *);
      	reg:RegexApi.Regex;
      END;
      
      (* wrapper for Symbols p, q,r,s which might be used in ebnf as substitute for call by name;
-     to be used for reemplimation in java *)
+     to be used for reemplimation in java 
+     *)
      
      SymbolsWrapper =POINTER TO RECORD p,q,r,s:Symbol;
      END;
@@ -54,14 +62,16 @@ VAR list,sentinel,h:Header;
 	q,r,s: Symbol;
 	startsymbol*:Symbol (* startsymbol for parse if called from editor, is exported to call of parse procedure*);
 
-	ch: CHAR; 	
+	ch: CHAR; 	 
     sym:      INTEGER;       
-    lastpos:  INTEGER;       
+    lastpos:  INTEGER;  
+    maxPosInParse* : INTEGER; (* maxPosition of chars read. is used to indicate position
+    						of error in input   *)  
     id:       Identifier;       
     R:        TextsCP.Reader;       
     W:        TextsCP.Writer;       
-   
-    txt:texts.Texts;
+    
+    (*txt:texts.Texts;*)
     shared:texts.Shared;
     
   
@@ -83,7 +93,7 @@ VAR i:INTEGER;
 BEGIN 
 	WHILE ~R.eot & (ch <= " ") DO TextsCP.Read(R, ch) END ;   (*skip blanks*) 
     CASE ch OF       
-   		"A" .. "Z", "a" .. "z": sym := ident; i := 0; 
+   			"A" .. "Z", "a" .. "z": sym := ident; i := 0; 
 			REPEAT id[i] := ch; INC(i); TextsCP.Read(R, ch) 
 			UNTIL (CAP(ch) < "A") OR (CAP(ch) > "Z"); 
             id[i]:=0X       
@@ -115,6 +125,7 @@ BEGIN
    				END ; 
 				(* Wirth IF ch <= " " THEN error(1) END ;	*)
 				id[i] := 0X; TextsCP.Read(R, ch) 
+				
 			|  "=" : sym := eql; TextsCP.Read(R, ch) 
 			|  "(" : sym := lparen; TextsCP.Read(R, ch) 
 			|  ")" : sym := rparen; TextsCP.Read(R, ch) 
@@ -179,6 +190,8 @@ VAR q1, s1:Symbol;
             	NEW(literalterminal);literalterminal.sym:=sym;
             	literalterminal.name:=id$; 
             	literalterminal.reg:=RegexApi.CreateRegex(id$);
+            	(* string, not regex starting with '[' *)
+            	literalterminal.isString:=id[0]#'[';
             	a:=literalterminal;a.alt:=NIL;a.next:=NIL;
             	(*record(T1, id, 0);*) 
             	
@@ -309,7 +322,7 @@ VAR resParse:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
 		(*          *)
 		BEGIN
 			Console.WriteString("parse.match Start pos: ");
-			Console.WriteInt(txt.getTextPos(),2);
+			Console.WriteInt(shared.getSharedText().getParsePos(),2);
 			Console.WriteString(" "+tNode.name$);
 			Console.WriteLn();
 			IF shared.backTrack THEN
@@ -320,18 +333,24 @@ VAR resParse:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
 			END;
 			
 			index:=0;
-						
-			resMatch:=RegexMatching.EditMatch(tNode.reg.regex,shared);
+			IF 	tNode.isString THEN
+				resMatch := RegexMatching.MatchString(tNode.name$,shared);
+			ELSE		
+				resMatch:=
+				RegexMatching.EditMatch(tNode.reg.regex,shared);
+			END;
 			IF resMatch THEN 
 				Console.WriteString(" after EditMatch resMatch true");
 			ELSE
 				Console.WriteString(" after EditMatch resMatch false");
-			END;
+			END; 
 			
-			Console.WriteString(" for "+tNode.name$);
-			(*Console.WriteInt(txt.getTextPos(),2);*) 
+			Console.WriteString(" for "+tNode.name$+ " parsePos: ");
+			Console.WriteInt(shared.getSharedText().getParsePos(),2); 
 			Console.WriteLn();
 			IF shared.backTrack THEN 
+				Console.WriteString("EditMatch backTrack true");				
+				Console.WriteLn();
 				RETURN FALSE 
 			ELSE
 				RETURN resMatch;
@@ -341,13 +360,16 @@ VAR resParse:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
 	
 
 BEGIN (*parse*)
-	(* 17-12-12*)
+	(* 17-12-12 *)
 	IF node = NIL THEN 
 		Console.WriteString("parse entry node nil");
 		Console.WriteLn();
 		RETURN TRUE;
 	END;
+	(*
 	IF shared.backTrack THEN
+		Console.WriteString("parse backTrack true");
+		Console.WriteLn();
 		IF node#list.entry THEN RETURN FALSE
 		ELSE
 			txt.setTextPos(0);
@@ -356,19 +378,24 @@ BEGIN (*parse*)
 			shared.backTrack:=FALSE;
 		END;
 	END;
+	*)
 	IF node IS Terminal THEN
 		nodeName:=node(Terminal).name$
 	ELSE nodeName:=node(Nonterminal).this.name$;
 	END;
-	Console.WriteString("parse node: "+nodeName);Console.WriteLn();
-	pos:=txt.getTextPos();
+	Console.WriteString("parse node: "+nodeName);
+	Console.WriteLn();
+	pos:=shared.getSharedText().getParsePos();
+	IF pos>maxPosInParse THEN maxPosInParse := pos;
+	END;
 	resParse:=FALSE;	
 	(* 17-12-12 IF node = NIL THEN RETURN TRUE
-	ELS*)IF node IS Terminal THEN
+	ELS*)
+	IF node IS Terminal THEN
 			resParse:=match(node(Terminal));
 			IF shared.backTrack THEN RETURN FALSE END;
 			Console.WriteString("parse resParse after match Pos: ");
-			Console.WriteInt(txt.getTextPos(),2);
+			Console.WriteInt(shared.getSharedText().getParsePos(),2);
 			IF resParse THEN Console.WriteString(" TRUE")
 			ELSE Console.WriteString(" FALSE");
 			END;
@@ -376,8 +403,21 @@ BEGIN (*parse*)
 		(* depth first recursion for nonterminal *)
 	ELSE resParse:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
 	END;
-	IF shared.backTrack THEN RETURN FALSE END;
-	(* bredth second recursion*)
+	IF shared.backTrack THEN
+		Console.WriteString("parse backTrack true");
+		Console.WriteLn();
+		IF node # list.entry THEN RETURN FALSE
+		ELSE
+			shared.getSharedText().setParsePos(0);
+			Console.WriteString("parse after backtrack restart");
+			Console.WriteLn();
+			shared.backTrack:=FALSE;
+			(* new start *)
+			resParse :=parse(list.entry);
+		END;
+	END;
+	(* IF shared.backTrack THEN RETURN FALSE END; *)
+	(* bredth second recursion *)
 	IF resParse THEN 
 		Console.WriteString ("parse vor bredth second");
 		Console.WriteLn();
@@ -393,14 +433,15 @@ BEGIN (*parse*)
 	IF shared.backTrack THEN RETURN FALSE 
 	END;
 	(* alternative after fail, reset position in text *)
-	txt.setTextPos(pos);
+	shared.getSharedText().setParsePos(pos);
 	(* no alt node is fail; if needed for distinction of case of empty node which is matched
 		without change of pos*)
 	IF node.alt=NIL THEN RETURN FALSE
 	ELSIF parse(node.alt) THEN 
 		IF shared.backTrack THEN RETURN FALSE ELSE RETURN TRUE
 		END;
-	ELSE txt.setTextPos(pos);RETURN FALSE;		
+	ELSE shared.getSharedText().setParsePos(pos);
+		RETURN FALSE;		
 	END;
 	
 END parse;
@@ -408,23 +449,27 @@ END parse;
 
 PROCEDURE init*(sh:texts.Shared):BOOLEAN;
 
+VAR ch:CHAR;
 BEGIN
 	Console.WriteString("Init entry");Console.WriteLn();	
 	IF Compile() THEN 		
-		Console.WriteString("nach Compile");Console.WriteLn();			
+		Console.WriteString("nach Compile");Console.WriteLn();		
+			
 		startsymbol:=list.entry;
 		shared:=sh;
-		txt:=shared.getSharedText();(* for getTextPos and setTextPos access*)
-		RegexMatching.GetStartCh(sh);
-		
+		(*txt:=shared.getSharedText();(* for getParsePos and setParsePos access*)		
+		RegexMatching.GetStartCh(sh);		
+		ch:=sh.getSym();
+		*)
 		RETURN TRUE;
 	ELSE RETURN FALSE;
 	END;
 END init;
 
 BEGIN (*Auto-generated*)
-	(********************************************************************
-	shared:=NIL;txt:=NIL;startsymbol:=NIL;
+	(********************************************************************)
+	shared:=NIL;startsymbol:=NIL;
+	maxPosInParse:=0;
 	Console.WriteString("EBNF Start ");Console.WriteLn();
 	
 		
@@ -436,11 +481,14 @@ BEGIN (*Auto-generated*)
 		IF parse(list.entry(* before: list only *)) THEN
 			Console.WriteString(" parse ok")
 		ELSE Console.WriteString(" parse failed");
+			(* return errorposition TO DO *)
+			Console.WriteString(" maxPosInParse: ");
+			Console.WriteInt(maxPosInParse,2);
 		END;
 		
 	END;
 	
 	
 	Console.WriteString("EBNF End");Console.WriteLn();
-	************************************************************************)
+	(*************************************************************************)
 END Ebnf.

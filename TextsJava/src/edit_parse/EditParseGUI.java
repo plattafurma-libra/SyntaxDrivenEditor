@@ -16,34 +16,47 @@ public class EditParseGUI {
 	
 	EditParse editParse;
 	
+	
 	 public void valueChanged(Text swtText) {
 		    if (!swtText.isFocusControl())
 		      return;
-		    /*if (editParse==null){
-		    	editParse=new EditParse();
-		    	editParse.startThread();
-		    }*/	
-	      	
+		    	      	
 		    System.out.println("swtText: "+swtText.getText());
 		   
-		   	char lastEditedChar=swtText.getText().charAt(swtText.getText().length()-1);
-		    editParse.shared.setCharFromSWTText(lastEditedChar);	
+		    /**************************************/
+		    int caretPos= swtText.getCaretPosition();
+		    int len=swtText.getText().length();
+		    
+		   
+		    // backtrack necessary if pos < len (e.g. due to insertion) 
+		   
+		    System.out.println("caretPosition: "+caretPos+ " length: "+len);
+		   
+		     
+		   
+		   	//char lastEditedChar=swtText.getText().charAt(pos-1);
+		    editParse.shared.setFromSWTText(swtText.getText(),caretPos,len);	
+		    // 
 		    // Vogt, Schildkamp:
-		    // swtText kann auch ganz hier gelöscht werden.
+		    // swtText kann auch ganz hier geloescht werden.
 		    // (bislang bleibt der Text erhalten und wird wieder
 		    // geparsed)
 		    // dann sollte editParse.shared.text.textLength auf 0 gesetzt werden
 		    // dafür in Texts neue setter methode;
-		    // private text ist von  shared über getText Methode zugreifbar
+		    // private text ist von  shared ueber getText Methode zugreifbar
 		    //
+		    
+		    
+		    /*
 		    if (lastEditedChar=='$'){
 		    	// delete last char '$'
 		    	String text = swtText.getText(0,swtText.getText().length()-2);
 		    	swtText.setText(text);
-		    	// das wird in EBNF und in Regex für backTrack gebraucht.
+		    	// das wird in EBNF und in Regex fuer backTrack gebraucht.
 		    	editParse.shared.backTrack=true;
 		    	System.out.println("swtText after '$' entered: "+swtText.getText());
 		    }
+		    */
 	 };
 		   	 
 	public void gui() {
@@ -62,6 +75,7 @@ public class EditParseGUI {
 	    
 	    /*-------------------------------*/
 	    editParse=new EditParse();
+	    //
     	editParse.startThread();
     	
     	/*--------------------------------*/

@@ -110,7 +110,7 @@ BEGIN
 	CHR(47)..CHR(62),
 	CHR(64)..CHR(90), 
 	CHR(94  )..CHR(122),
-	CHR(126)..CHR(255):sym:=char;iden:=ch; Read(); (*alles au√üer Metachar*)
+	CHR(126)..CHR(255):sym:=char;iden:=ch; Read(); (*alles auﬂer Metachar*)
 	| "*":sym:=asterisk; Read();
 	| "+":sym:=plus; Read();
 	| "?":sym:=qum; Read();
