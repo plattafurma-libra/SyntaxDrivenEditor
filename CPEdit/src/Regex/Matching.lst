@@ -396,65 +396,67 @@ Listing:
  381 END EditMatch;
  382 
  383 
- 384 PROCEDURE MatchString*(str:ARRAY OF CHAR;shared:texts.Shared):BOOLEAN;
+ 384 (*
  385 
- 386 VAR posInString,resetPos, len:INTEGER;ch:CHAR; 
+ 386 PROCEDURE MatchString*(str:ARRAY OF CHAR;shared:texts.Shared):BOOLEAN;
  387 
- 388         PROCEDURE length(str:ARRAY OF CHAR): INTEGER;
- 389         VAR len:INTEGER;
- 390         BEGIN
- 391                 FOR len:=0 TO 256 DO
- 392                         IF str[len] = 0X THEN RETURN len;
- 393                         END;
- 394                 END;
- 395                 RETURN -1;
- 396         END length;
- 397 
- 398 BEGIN (*MatchString*)
- 399         Console.WriteString("Matching.MatchString  ");
- 400         Console.WriteString(str);
- 401         Console.WriteLn;
- 402         posInString := 0;
- 403         resetPos:=shared.getSharedText().getParsePos();
- 404         
- 405         len :=length(str);
+ 388 VAR posInString,resetPos, len:INTEGER;ch:CHAR; 
+ 389 
+ 390         PROCEDURE length(str:ARRAY OF CHAR): INTEGER;
+ 391         VAR len:INTEGER;
+ 392         BEGIN
+ 393                 FOR len:=0 TO 256 DO
+ 394                         IF str[len] = 0X THEN RETURN len;
+ 395                         END;
+ 396                 END;
+ 397                 RETURN -1;
+ 398         END length;
+ 399 
+ 400 BEGIN (*MatchString*)
+ 401         Console.WriteString("Matching.MatchString  ");
+ 402         Console.WriteString(str);
+ 403         Console.WriteLn;
+ 404         posInString := 0;
+ 405         resetPos:=shared.getSharedText().getParsePos();
  406         
- 407         Console.WriteString("MatchString len: ");
- 408         Console.WriteInt(len,2);
- 409         Console.WriteLn;
- 410         WHILE posInString < len DO
- 411                 ch:=shared.getSym();
- 412                 Console.Write(ch);Console.WriteLn;
- 413         
- 414                 IF ch # str[posInString] THEN
- 415                         (* reset *)
- 416                         shared.getSharedText().setParsePos(resetPos);
- 417                         Console.WriteString("Matching.MatchString FALSE ");
- 418                         Console.WriteLn;
- 419                         RETURN FALSE;
- 420                 ELSE 
- 421                         INC(posInString);
- 422                         
- 423                 END;
- 424         END (* while *);
- 425         
- 426         Console.WriteString("Matching.MatchString TRUE ");
- 427         Console.WriteLn;
- 428         RETURN TRUE;
- 429 END MatchString;
- 430 
- 431 (*
- 432 PROCEDURE GetStartCh*(shared:texts.Shared);
- 433 BEGIN
- 434         ch:=shared.getSym();
- 435         WriteEntry("GetStartCh: ",ch,-1);
- 436         i:=0;
- 437 END GetStartCh;
- 438 *)
- 439 
- 440 
+ 407         len :=length(str);
+ 408         
+ 409         Console.WriteString("MatchString len: ");
+ 410         Console.WriteInt(len,2);
+ 411         Console.WriteLn;
+ 412         WHILE posInString < len DO
+ 413                 ch:=shared.getSym();
+ 414                 Console.Write(ch);Console.WriteLn;
+ 415         
+ 416                 IF ch # str[posInString] THEN
+ 417                         (* reset *)
+ 418                         shared.getSharedText().setParsePos(resetPos);
+ 419                         Console.WriteString("Matching.MatchString FALSE ");
+ 420                         Console.WriteLn;
+ 421                         RETURN FALSE;
+ 422                 ELSE 
+ 423                         INC(posInString);
+ 424                         
+ 425                 END;
+ 426         END (* while *);
+ 427         
+ 428         Console.WriteString("Matching.MatchString TRUE ");
+ 429         Console.WriteLn;
+ 430         RETURN TRUE;
+ 431 END MatchString;
+ 432 
+ 433 
+ 434 PROCEDURE GetStartCh*(shared:texts.Shared);
+ 435 BEGIN
+ 436         ch:=shared.getSym();
+ 437         WriteEntry("GetStartCh: ",ch,-1);
+ 438         i:=0;
+ 439 END GetStartCh;
+ 440 *)
  441 
- 442 END RegexMatching.
+ 442 
+ 443 
+ 444 END RegexMatching.
 
 There were: No errors, and  9 warnings
 

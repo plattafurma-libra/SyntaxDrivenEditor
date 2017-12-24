@@ -41,9 +41,7 @@ TYPE Identifier = ARRAY IdLen OF CHAR;
      END;
      
      Terminal=POINTER TO RECORD(Symbol) sym:INTEGER;name:ARRAY IdLen OF CHAR; 
-     	isString:BOOLEAN (* needed für Regex processing, strings are treated other than
-     	regex which start with '['  *);
-     	reg:RegexApi.Regex;
+     	     	reg:RegexApi.Regex;
      END;
      
      (* wrapper for Symbols p, q,r,s which might be used in ebnf as substitute for call by name;
@@ -71,7 +69,7 @@ VAR list,sentinel,h:Header;
     R:        TextsCP.Reader;       
     W:        TextsCP.Writer;       
     
-    (*txt:texts.Texts;*)
+   
     shared:texts.Shared;
     
   
@@ -190,8 +188,7 @@ VAR q1, s1:Symbol;
             	NEW(literalterminal);literalterminal.sym:=sym;
             	literalterminal.name:=id$; 
             	literalterminal.reg:=RegexApi.CreateRegex(id$);
-            	(* string, not regex starting with '[' *)
-            	literalterminal.isString:=id[0]#'[';
+            	
             	a:=literalterminal;a.alt:=NIL;a.next:=NIL;
             	(*record(T1, id, 0);*) 
             	
@@ -333,12 +330,9 @@ VAR resParse:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
 			END;
 			
 			index:=0;
-			IF 	tNode.isString THEN
-				resMatch := RegexMatching.MatchString(tNode.name$,shared);
-			ELSE		
-				resMatch:=
-				RegexMatching.EditMatch(tNode.reg.regex,shared);
-			END;
+			resMatch:=
+			RegexMatching.EditMatch(tNode.reg.regex,shared);
+			
 			IF resMatch THEN 
 				Console.WriteString(" after EditMatch resMatch true");
 			ELSE
@@ -389,8 +383,7 @@ BEGIN (*parse*)
 	IF pos>maxPosInParse THEN maxPosInParse := pos;
 	END;
 	resParse:=FALSE;	
-	(* 17-12-12 IF node = NIL THEN RETURN TRUE
-	ELS*)
+	
 	IF node IS Terminal THEN
 			resParse:=match(node(Terminal));
 			IF shared.backTrack THEN RETURN FALSE END;
@@ -406,6 +399,7 @@ BEGIN (*parse*)
 	IF shared.backTrack THEN
 		Console.WriteString("parse backTrack true");
 		Console.WriteLn();
+		
 		IF node # list.entry THEN RETURN FALSE
 		ELSE
 			shared.getSharedText().setParsePos(0);
@@ -436,7 +430,23 @@ BEGIN (*parse*)
 	shared.getSharedText().setParsePos(pos);
 	(* no alt node is fail; if needed for distinction of case of empty node which is matched
 		without change of pos*)
-	IF node.alt=NIL THEN RETURN FALSE
+	IF node.alt=NIL THEN 
+		(* error, restart; s.above backTrack *)
+		IF node # list.entry THEN RETURN FALSE
+		ELSE
+			Console.WriteString("parse after error ");
+			Console.WriteLn();
+			(* wait, until caret is reset (caretPos < (errorposition:) maxPosInParse) *)
+			WHILE (shared.errorCase(maxPosInParse)) DO END;
+			shared.getSharedText().setParsePos(0);			
+			
+			(*shared.backTrack:=FALSE;*)
+			(* new start *)
+			Console.WriteString("parse after error; parse restart ");
+			Console.WriteLn();
+			RETURN parse(list.entry);
+		END;
+		RETURN FALSE
 	ELSIF parse(node.alt) THEN 
 		IF shared.backTrack THEN RETURN FALSE ELSE RETURN TRUE
 		END;

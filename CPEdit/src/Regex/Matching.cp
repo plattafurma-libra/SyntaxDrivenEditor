@@ -197,7 +197,7 @@ VAR  branch:RegexParser.Branch;
 					sh.getSharedText().setParsePos(i);
 		
 				|2: (* repetitions, quantified (???) *)
-					WriteMessage("MatchPiece Case 2 Quantifierd");
+					WriteMessage("MatchPiece Case 2 Quantifier ");
 					atom:=piece.atom;   (*Quantified*)
 					min:=piece.min.val;
 					max:=piece.max.val;
@@ -381,6 +381,8 @@ BEGIN
 END EditMatch;
 
 
+(*
+
 PROCEDURE MatchString*(str:ARRAY OF CHAR;shared:texts.Shared):BOOLEAN;
 
 VAR posInString,resetPos, len:INTEGER;ch:CHAR; 
@@ -428,7 +430,7 @@ BEGIN (*MatchString*)
 	RETURN TRUE;
 END MatchString;
 
-(*
+
 PROCEDURE GetStartCh*(shared:texts.Shared);
 BEGIN
 	ch:=shared.getSym();
