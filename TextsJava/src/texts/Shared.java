@@ -4,7 +4,7 @@ public class Shared {
 
 		
 	private static boolean available=false;
-	
+	private static int caretPos=0;
 	
 	private Texts sharedText;// sharedText.textAsCharArray gets (char by char) the chars edited in swtText of
 	// the SWT Text Type in the SWT Gui
@@ -33,11 +33,11 @@ public class Shared {
 	// this might be a similar  interface to draft's json objects and their difference in order to 
 	// get new chars edited in draft current block
 	
-	public void setFromSWTText(String textStr,int caretPos,int len){
+	public void setFromSWTText(String textStr,int caretPosFromText,int len){
 		// System.out.println("Shared.charFromSWTText ch "+ch);
 		// backtrack for insert
 		if (!this.backTrack) {
-			if (this.sharedText.getParsePos() > caretPos) {
+			if (this.sharedText.getParsePos() > caretPosFromText) {
 				this.backTrack=true;
 				// parsePos is reset in EBNF parse at the end of backtrack
 				System.out.println("Shared.setFromSWTText backTrack true");
@@ -49,12 +49,13 @@ public class Shared {
 		this.sharedText.setTextAsCharArray(textStr);
 		//this.internalCaretPos=caretPos;
 		System.out.println("Shared.setFromSWTText textStr: "+textStr+
-				" parsePos: "+this.sharedText.getParsePos()+ " caretPosition: "+
-				caretPos);
+				" parsePos: "+this.sharedText.getParsePos()+ " caretPosFromText: "+
+				caretPosFromText);
 		// backTrack is set to false after backtrack in ebnf.parse
 		if(this.backTrack) this.available = true;
 		else {			
-			this.available=caretPos >= this.sharedText.getParsePos();	
+			this.available=caretPosFromText >= this.sharedText.getParsePos();
+			caretPos=caretPosFromText;
 		}
 		
 	}
@@ -82,7 +83,7 @@ public class Shared {
 	
 	public synchronized char getSym(){
 		System.out.println("Shared.getSym entry");
-		if (sharedText.getTextLen()>sharedText.getParsePos()) available=true;
+		if (caretPos>sharedText.getParsePos()) available=true;
 		try {
 			System.out.println("Shared.getSym nach try vor while");
 			while (!available) Thread.sleep(100);
@@ -104,17 +105,13 @@ public class Shared {
 		
 	}
 
-	/* ersetzen durch getSym, checken */          
-	public synchronized char getCharAtTextPos(int parsePos){
-		//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-		/*if (parsePos < this.internalCaretPos){
-			return this.sharedText.getTextCharAtPos(parsePos);
-		} 
-		else*/ return this.getSym();
-		
 	
+	
+	public boolean errorCase(int maxPosInParse) {
+		System.out.println("errorCase caretPos: "+caretPos
+		+ " maxPosInParse: "+maxPosInParse);
+		return (caretPos>maxPosInParse);
 	}
-	
 	public static boolean available() {
 		return available;
 	}
