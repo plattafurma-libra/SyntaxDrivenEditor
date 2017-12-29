@@ -4,8 +4,9 @@ MODULE Ebnf;
 Font Description: 
 1. Size:(e.g., 12 point vs. 16 point), 
 2. Style (e.g., plain vs. italic), 
-3. Typeface (e.g., Times vs. Helvetica)
-4. Weight (e.g., bold vs. normal).
+3. Typeface (e.g., Times vs. Helvetica),
+4. Weight (e.g., bold vs. normal),
+5. Color (e.g., red).
 *)
 
 (* code mainly from Niklaus Wirth Grundlagen und Techniken des Compilerbaus, from English
@@ -63,8 +64,7 @@ VAR list,sentinel,h:Header;
 	ch: CHAR; 	 
     sym:      INTEGER;       
     lastpos:  INTEGER;  
-    maxPosInParse* : INTEGER; (* maxPosition of chars read. is used to indicate position
-    						of error in input   *)  
+   
     id:       Identifier;       
     R:        TextsCP.Reader;       
     W:        TextsCP.Writer;       
@@ -84,7 +84,101 @@ BEGIN pos := TextsCP.Pos(R);
         TextsCP.WriteLn(W);   (* TextsCP.Append(Oberon.Log,W.buf)   *) 
     END;
     RTS.Throw(" error");       
-END error;     
+END error;  
+
+PROCEDURE skipBlank;
+
+BEGIN
+	WHILE ~R.eot & (ch <= " ") DO TextsCP.Read(R,ch);END;
+END skipBlank;  
+
+PROCEDURE ReadString(VAR Str:ARRAY OF CHAR);
+VAR i:INTEGER;
+BEGIN
+	skipBlank;
+	i:=0;
+	WHILE(CAP(ch) >= "A") & (CAP(ch) <= "Z") DO
+		Str[i] :=ch;
+		INC(i);
+		TextsCP.Read(R,ch);
+	END;
+	Str[i]:=0X;
+	skipBlank;	
+	Console.WriteString(Str);
+	Console.WriteLn();
+END ReadString;
+
+PROCEDURE ReadNumberString(VAR Str:ARRAY OF CHAR);
+VAR i:INTEGER;
+BEGIN
+	skipBlank;
+	i:=0;
+	WHILE(CAP(ch) >= "0") & (CAP(ch) <= "9") DO
+		Str[i] :=ch;
+		INC(i);
+		TextsCP.Read(R,ch);
+	END;
+	Str[i]:=0X;
+	skipBlank;
+	Console.WriteString(Str);
+	Console.WriteLn();	
+END ReadNumberString;
+
+PROCEDURE ReadValue(VAR Ptr: POINTER TO ARRAY OF CHAR);
+
+VAR value:ARRAY IdLen OF CHAR;
+
+BEGIN
+	ReadString(value);
+	RegexApi.ArrayToPointer(value,Ptr);
+END ReadValue;
+
+PROCEDURE ReadNumberValue(VAR Ptr: POINTER TO ARRAY OF CHAR);
+
+VAR value:ARRAY IdLen OF CHAR;
+
+BEGIN
+	ReadNumberString(value);
+	RegexApi.ArrayToPointer(value,Ptr);
+END ReadNumberValue;
+
+PROCEDURE FontDescription():RegexParser.FontDesc;
+
+VAR attribute, value : ARRAY IdLen OF CHAR;
+	fontDesc:RegexParser.FontDesc;
+BEGIN
+	Console.WriteString("FONTDESCRIPTION  ");
+	Console.WriteLn();
+	(* next ch after <  *)
+	TextsCP.Read(R,ch);
+	NEW(fontDesc);
+	fontDesc.size:=NIL;fontDesc.style:=NIL; fontDesc.typeface:=NIL;
+	fontDesc.weight:=NIL;fontDesc.color:=NIL; 
+	WHILE ch # '>' DO
+		ReadString(attribute);
+		IF ch=':' THEN TextsCP.Read(R,ch)
+		ELSE error(10);
+		END;           				
+		IF attribute = "Size" THEN 
+			ReadNumberValue(fontDesc.size)
+		ELSIF attribute = "Style" THEN
+			ReadValue(fontDesc.style);
+		ELSIF attribute = "Typeface" THEN
+			ReadValue(fontDesc.typeface);
+		ELSIF attribute = "Weight" THEN
+			ReadValue(fontDesc.weight);
+		ELSIF attribute = "Color" THEN
+			ReadValue(fontDesc.color);
+		ELSE error (12);
+		END;
+		
+		IF ch= ';' THEN TextsCP.Read(R,ch);
+				skipBlank;
+        END;   				
+   	END (*while*);  
+   	TextsCP.Read(R,ch);
+    RETURN fontDesc;      		
+END FontDescription; 
 
 PROCEDURE GetSym; 
 VAR i:INTEGER;       
@@ -193,7 +287,15 @@ VAR q1, s1:Symbol;
             	(*record(T1, id, 0);*) 
             	
             	p:=a;q:=a;r:=a;s:=a; 
-            	GetSym 
+            	Console.Write(ch);            	
+            	skipBlank();
+            	(* fontdescription*)            	
+            	IF ch = '<' THEN
+            		literalterminal.reg.regex.Font:=FontDescription();
+            	END;		
+            	GetSym;            	
+            	
+            
             ELSIF sym = lparen THEN 
          		GetSym; 
          		expression(p,q,r,s); 
@@ -380,7 +482,7 @@ BEGIN (*parse*)
 	Console.WriteString("parse node: "+nodeName);
 	Console.WriteLn();
 	pos:=shared.getSharedText().getParsePos();
-	IF pos>maxPosInParse THEN maxPosInParse := pos;
+	IF pos> texts.Shared.maxPosInParse THEN texts.Shared.maxPosInParse := pos;
 	END;
 	resParse:=FALSE;	
 	
@@ -437,7 +539,7 @@ BEGIN (*parse*)
 			Console.WriteString("parse after error ");
 			Console.WriteLn();
 			(* wait, until caret is reset (caretPos < (errorposition:) maxPosInParse) *)
-			WHILE (shared.errorCase(maxPosInParse)) DO END;
+			WHILE (shared.errorCase(texts.Shared.maxPosInParse)) DO END;
 			shared.getSharedText().setParsePos(0);			
 			
 			(*shared.backTrack:=FALSE;*)
@@ -479,7 +581,7 @@ END init;
 BEGIN (*Auto-generated*)
 	(********************************************************************)
 	shared:=NIL;startsymbol:=NIL;
-	maxPosInParse:=0;
+	texts.Shared.maxPosInParse:=0;
 	Console.WriteString("EBNF Start ");Console.WriteLn();
 	
 		
@@ -493,7 +595,7 @@ BEGIN (*Auto-generated*)
 		ELSE Console.WriteString(" parse failed");
 			(* return errorposition TO DO *)
 			Console.WriteString(" maxPosInParse: ");
-			Console.WriteInt(maxPosInParse,2);
+			Console.WriteInt(texts.Shared.maxPosInParse,2);
 		END;
 		
 	END;

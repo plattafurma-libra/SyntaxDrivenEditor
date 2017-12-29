@@ -6,7 +6,7 @@ TYPE Regex=POINTER TO EXTENSIBLE RECORD (RegexParser.RegexType) END;
 
 VAR i:INTEGER;
 	
-	ch:CHAR;
+	rch:texts.RichChar;
 	(*tarString:POINTER TO ARRAY OF CHAR;*)
 	sh:texts.Shared;
 	
@@ -43,30 +43,6 @@ BEGIN
 	END;
 	Console.WriteLn();
 END WriteExit;
-		
-PROCEDURE GetCharAtPos(pos:INTEGER;sh:texts.Shared):CHAR;
-VAR ch:CHAR;
-
-BEGIN
-	(*TODO pos no longer needed in getCharAtTextPos!!!!*)
-	WriteEntry("GetCharAtPos pos",0X,-1);
-	
-	ch:= sh.getCharAtTextPos(pos);
-	IF sh.backTrack THEN RETURN ' ' END;
-	
-	(****************** 	
-	ch:= sh.getSym();
-	IF pos < sh.texts.getCaretPos() THEN
-			Console.WriteString("GetCharAtPos ch from sh.texts.getCharAtPos: ");
-			ch:= sh.texts.getCharAtPos(pos)
-	ELSE 
-		Console.WriteString("GetCharAtPos ch from sh.getSym: ");
-		ch:= sh.getSym();
-	END;
-	************************************)	
-	WriteExit("GetCharAtPos ch ",0,ch,-1);	
-	RETURN ch;
-END GetCharAtPos;
 
 (*-------------------------Matching Procedures---------------------------*)
 
@@ -75,7 +51,7 @@ BEGIN
 	WriteMessage("MatchNegRange Entry");
 	IF sh.backTrack THEN WriteMessage("MatchNegRange backTrack");RETURN END;
 	REPEAT
-		flag:=((ch<range.min) OR (ch>range.max));
+		flag:=((rch.ch<range.min) OR (rch.ch>range.max));
 		range:=range.next;
 	UNTIL range=NIL;
 	WriteMessage("MatchNegRange Exit");
@@ -83,7 +59,7 @@ END MatchNegRange;
 
 PROCEDURE MatchRange(range:RegexParser.Range; VAR flag:BOOLEAN);
 BEGIN
-	WriteEntry("MatchRange ",ch,-1);
+	WriteEntry("MatchRange ",rch.ch,-1);
 	IF sh.backTrack THEN RETURN END;
 	LOOP
 		IF range=NIL THEN EXIT END;
@@ -92,9 +68,10 @@ BEGIN
 		Console.WriteString(" MatchRange range.max: "); 
 		Console.Write(range.max);
 		Console.WriteLn();
-		flag:=((ch>=range.min) & (ch<=range.max));
+		flag:=((rch.ch>=range.min) & (rch.ch<=range.max));
 		IF flag=TRUE THEN EXIT;
-		ELSE range:=range.next END;
+		ELSE range:=range.next 
+		END;
 	END;
 	(*  are there any  subRanges *)
  	LOOP
@@ -104,10 +81,69 @@ BEGIN
 	END;
 	IF range#NIL THEN MatchNegRange(range,flag) END;
 	
-	WriteExit("MatchRange ch ",0,ch,-1);
-END MatchRange;
+	WriteExit("MatchRange ch ",0,rch.ch,-1);
+END MatchRange; 
 
-PROCEDURE MatchRegex(reg:RegexParser.Regex;resetPos:INTEGER;VAR flag:BOOLEAN);
+
+PROCEDURE MatchChar(Ptr:POINTER TO ARRAY OF CHAR;rch:texts.RichChar):BOOLEAN;
+
+BEGIN
+	(* TO DO *)
+	RETURN TRUE;
+
+END MatchChar;
+
+PROCEDURE Size(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF regex.Font.size = NIL THEN RETURN TRUE
+	ELSE RETURN MatchChar(regex.Font.size,rch);
+	END; 
+END Size;
+
+PROCEDURE Style(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF regex.Font.style = NIL THEN RETURN TRUE
+	ELSE RETURN MatchChar(regex.Font.style,rch);
+	END; 
+END Style;
+
+PROCEDURE Typeface(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF regex.Font.typeface = NIL THEN RETURN TRUE
+	ELSE RETURN MatchChar(regex.Font.typeface,rch);
+	END; 
+END Typeface;
+
+PROCEDURE Weight(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF regex.Font.weight = NIL THEN RETURN TRUE
+	ELSE RETURN MatchChar(regex.Font.weight,rch);
+	END; 
+END Weight;
+
+PROCEDURE Color(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF regex.Font.color = NIL THEN RETURN TRUE
+	ELSE RETURN MatchChar(regex.Font.color,rch);
+	END; 
+END Color;
+
+
+PROCEDURE FontMatch(rch:texts.RichChar; regex:RegexParser.Regex):INTEGER;
+
+	
+
+BEGIN
+	IF regex.Font=NIL THEN RETURN 1 
+	ELSIF Size(regex,rch) & Style(regex,rch) & Typeface(regex,rch) &  
+		Weight(regex,rch) & Color(regex,rch) THEN
+		RETURN 1 
+	ELSE RETURN -1
+	END;
+END FontMatch;
+
+
+PROCEDURE MatchRegex(regex:RegexParser.Regex;resetPos:INTEGER;VAR flag:BOOLEAN);
 VAR  branch:RegexParser.Branch;
 	 	j:INTEGER (*ResetPosition*);
 	 	res:INTEGER;
@@ -140,10 +176,10 @@ VAR  branch:RegexParser.Branch;
 					MatchRegex(atom.regex,resetPos,flag);
 				ELSE	
 				
-					IF ~(ch=0X) THEN 
+					IF ~(rch.ch=0X) THEN 
 						
 						(*ch:= GetCharAtPos(i,sh);*) (* sh.getCharAtTextPos(i);	*)	
-						ch := sh.getSym();
+						rch := sh.getSym();
 							
 						IF sh.backTrack THEN 
 							WriteMessage("MatchAtom sh.backtrach nach getSym");
@@ -151,7 +187,7 @@ VAR  branch:RegexParser.Branch;
 						END;			
 						(*INC(i);*)
 						Console.WriteString("MatchAtom getSym ch: ");
-						Console.Write(ch); 
+						Console.Write(rch.ch); 
 						Console.WriteLn();
 					END;			
 					IF atom.range.pos THEN
@@ -163,13 +199,14 @@ VAR  branch:RegexParser.Branch;
 					END;
 				
 				END;
-				IF flag THEN res:=1 
-				
+				IF flag THEN 
+					res:= FontMatch(rch,regex);
+					
 				ELSE
 					res:=-1;
 				END;
 				
-				WriteExit("MatchAtom result, ch ",res,ch,-1);
+				WriteExit("MatchAtom result, ch ",res,rch.ch,-1);
 			END MatchAtom;
 			
 		BEGIN (*MatchPiece*) (*hier Matching-Procedures aufrufen piece.MatchProcQuantified(piece,flag)*)
@@ -259,7 +296,7 @@ VAR  branch:RegexParser.Branch;
 			IF flag THEN res:=1 ELSE res:=-1;
 			END;
 			
-			WriteExit("MatchPiece: ",res,ch,i);
+			WriteExit("MatchPiece: ",res,rch.ch,i);
 		END MatchPiece; 
 		
 		PROCEDURE Final():BOOLEAN;
@@ -296,14 +333,14 @@ VAR  branch:RegexParser.Branch;
 		END;
 		IF flag THEN res:=1 ELSE res:=-1;
 		END;
-		WriteExit("MatchBranch ch ",res,ch,-1);
+		WriteExit("MatchBranch ch ",res,rch.ch,-1);
 	END MatchBranch;
 
 (*TODO reset???*)
 BEGIN (*MatchRegex*)
 	j:=i; (* save position *)
 	WriteEntry("MatchRegex ch  i (= j): ",' ',i);
-	branch:=reg.branch;
+	branch:=regex.branch;
 	
 	LOOP
 		IF (branch=NIL) THEN EXIT END; 
@@ -312,11 +349,15 @@ BEGIN (*MatchRegex*)
 		IF flag THEN EXIT;
 		ELSE 
 			
-			(*	Out.String("MatchRegex: Branch False  j= ");
-			Out.Int(j,2);Out.String("ch=");Out.Char(ch);Out.Ln();*)
+			(*	
+				Out.String("MatchRegex: Branch False  j= ");
+			Out.Int(j,2);Out.String("ch=");Out.Char(ch);Out.Ln();
+			
+			*)
+			
 			Console.WriteLn();Console.WriteString("MatchRegex Branch false j:");
 			Console.WriteInt(j,2);Console.WriteString(" ch=");
-			Console.Write(ch);Console.WriteLn();
+			Console.Write(rch.ch);Console.WriteLn();
 			(* reset,
 			toDo parsePos*)
 			i:=j;
@@ -330,12 +371,14 @@ BEGIN (*MatchRegex*)
 		END
 	END;
 	IF flag THEN res:=1 ELSE res:=-1;END;
-	WriteExit("MatchRegex ch ",res,ch,i);
+	WriteExit("MatchRegex ch ",res,rch.ch,i);
 END MatchRegex;
 				
 PROCEDURE Match*(regex:RegexParser.Regex;target:POINTER TO ARRAY OF CHAR):BOOLEAN;
 VAR flag:BOOLEAN; branch:RegexParser.Branch;dummy:INTEGER;
 BEGIN
+
+	(*___________________________________________
 	(*tarString:=target;*)
 	
 	flag:=FALSE;
@@ -347,6 +390,8 @@ BEGIN
 	IF ch#0X THEN (*ch:=tarString[i]*) ch:=0X; END;
 	IF (flag) & (ch#0X) THEN flag:=FALSE END;
 	RETURN flag
+	-----------------------------------------*)
+	RETURN FALSE;
 END Match; 
 
 (* called from ebnf-parser *)
@@ -364,10 +409,12 @@ BEGIN
 	Console.WriteLn;
 	(*ch:='$';*) (* GetCharAtPos(i,sh); shared.getCharAtTextPos(i);*)
 	(*ch := shared.getSharedText().getTextCharAtPos(i);*)
-	(*ch := shared.getSym();*) ch:=' ';(*dummy*)
-	Console.WriteString("RegexMatching.EditMatch ch: ");
-	Console.Write(ch);
-	Console.WriteLn;
+	(*ch := shared.getSym();*) 
+	(*******************************************)
+	NEW(rch);	rch.ch:=' '; (*dummy*)
+	(*Console.WriteString("RegexMatching.EditMatch ch: ");
+	Console.Write(rch.ch);
+	Console.WriteLn;*)
 	Console.WriteString("RegexMatching.EditMatch TextLen: ");
 	Console.WriteInt(shared.getSharedText().getTextLen(),2);
 	Console.WriteLn;
@@ -379,65 +426,6 @@ BEGIN
 	RETURN flag;
 	
 END EditMatch;
-
-
-(*
-
-PROCEDURE MatchString*(str:ARRAY OF CHAR;shared:texts.Shared):BOOLEAN;
-
-VAR posInString,resetPos, len:INTEGER;ch:CHAR; 
-
-	PROCEDURE length(str:ARRAY OF CHAR): INTEGER;
-	VAR len:INTEGER;
-	BEGIN
-		FOR len:=0 TO 256 DO
-			IF str[len] = 0X THEN RETURN len;
-			END;
-		END;
-		RETURN -1;
-	END length;
-
-BEGIN (*MatchString*)
-	Console.WriteString("Matching.MatchString  ");
-	Console.WriteString(str);
-	Console.WriteLn;
-	posInString := 0;
-	resetPos:=shared.getSharedText().getParsePos();
-	
-	len :=length(str);
-	
-	Console.WriteString("MatchString len: ");
-	Console.WriteInt(len,2);
-	Console.WriteLn;
-	WHILE posInString < len DO
-		ch:=shared.getSym();
-		Console.Write(ch);Console.WriteLn;
-	
-		IF ch # str[posInString] THEN
-			(* reset *)
-			shared.getSharedText().setParsePos(resetPos);
-			Console.WriteString("Matching.MatchString FALSE ");
-			Console.WriteLn;
-			RETURN FALSE;
-		ELSE 
-			INC(posInString);
-			
-		END;
-	END (* while *);
-	
-	Console.WriteString("Matching.MatchString TRUE ");
-	Console.WriteLn;
-	RETURN TRUE;
-END MatchString;
-
-
-PROCEDURE GetStartCh*(shared:texts.Shared);
-BEGIN
-	ch:=shared.getSym();
-	WriteEntry("GetStartCh: ",ch,-1);
-	i:=0;
-END GetStartCh;
-*)
 
 
 

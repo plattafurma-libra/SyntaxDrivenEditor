@@ -7,7 +7,7 @@ TYPE Regex*=POINTER TO RECORD
 	 END;
 
 (*-----------------------------Aux-Method------------------------------*)
-PROCEDURE ArrayToPointer(arr:ARRAY OF CHAR; VAR ptr:POINTER TO ARRAY OF CHAR);
+PROCEDURE ArrayToPointer*(arr:ARRAY OF CHAR; VAR ptr:POINTER TO ARRAY OF CHAR);
 VAR i,j:INTEGER;
 BEGIN
 	i:=0;

@@ -1,6 +1,6 @@
 MODULE RegexParser;
 
-(*IMPORT Interface_Strings,Interface_Out;*)
+
 IMPORT Console, RTS;
 
 
@@ -8,9 +8,10 @@ IMPORT Console, RTS;
 TYPE 
 	Regex*=POINTER TO RegexType;
 	RegexType*=EXTENSIBLE RECORD
-	lastPiece*:Piece;
-	last:Branch;
-	branch-:Branch;
+		lastPiece*:Piece;
+		last:Branch;
+		branch-:Branch;
+		Font*: FontDesc;
 END;
 
 Branch*=POINTER TO RECORD
@@ -39,6 +40,18 @@ END;
 
 Quantifier*=POINTER TO RECORD
 	val-:INTEGER
+END; 
+
+(* Font Description: 
+1. Size:(e.g., 12 point vs. 16 point)
+2. Style (e.g., plain vs. italic), 
+3. Typeface (e.g., Times vs. Helvetica),
+4. Weight (e.g., bold vs. normal),
+5. Color (e.g., red ).
+*)
+
+FontDesc* = POINTER TO RECORD
+	size*, style*, typeface*, weight*, color*: POINTER TO ARRAY OF CHAR;
 END;
 
 CONST char=0;asterisk=1;plus=2;qum=3;bar=4;osquareBr=5;csquareBr=6;neg=7 (*^*);escape=8;lKlammer=9;rKlammer=10;glKlammer=11;grKlammer=12;strich=13;punkt=14; other=15;
@@ -485,7 +498,7 @@ BEGIN
 	error:=FALSE;
 	regString:=str;i:=0;Read();GetSym();
 	reg.regExp();
-	(*Hier an RegExpr. noch ein piece.range.min:=0X hängen*)
+	(*Hier an RegExpr. noch ein piece.range.min:=0X haengen*)
 	NEW(termPiece);
 	NEW(termPiece.atom);
 	NEW(termPiece.atom.range);
@@ -499,6 +512,8 @@ BEGIN
 	termPiece.id:=2;
 	globalLast.suc:=termPiece;
 	reg.lastPiece:=globalLast;
+	reg.Font:=NIL;
+	
 END InitCreateRegex;
 
 

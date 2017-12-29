@@ -8,7 +8,7 @@ Listing:
    6 
    7 VAR i:INTEGER;
    8         
-   9         ch:CHAR;
+   9         rch:texts.RichChar;
   10         (*tarString:POINTER TO ARRAY OF CHAR;*)
   11         sh:texts.Shared;
   12         
@@ -45,419 +45,410 @@ Listing:
   43         END;
   44         Console.WriteLn();
   45 END WriteExit;
-  46                 
-  47 PROCEDURE GetCharAtPos(pos:INTEGER;sh:texts.Shared):CHAR;
-**** ----------^ Warning: This procedure is not exported, called or assigned
-  48 VAR ch:CHAR;
-  49 
+  46 
+  47 (*-------------------------Matching Procedures---------------------------*)
+  48 
+  49 PROCEDURE MatchNegRange(range:RegexParser.Range; VAR flag:BOOLEAN);
   50 BEGIN
-  51         (*TODO pos no longer needed in getCharAtTextPos!!!!*)
-  52         WriteEntry("GetCharAtPos pos",0X,-1);
-  53         
-  54         ch:= sh.getCharAtTextPos(pos);
-  55         IF sh.backTrack THEN RETURN ' ' END;
-  56         
-  57         (******************     
-  58         ch:= sh.getSym();
-  59         IF pos < sh.texts.getCaretPos() THEN
-  60                         Console.WriteString("GetCharAtPos ch from sh.texts.getCharAtPos: ");
-  61                         ch:= sh.texts.getCharAtPos(pos)
-  62         ELSE 
-  63                 Console.WriteString("GetCharAtPos ch from sh.getSym: ");
-  64                 ch:= sh.getSym();
-  65         END;
-  66         ************************************)   
-  67         WriteExit("GetCharAtPos ch ",0,ch,-1);  
-  68         RETURN ch;
-  69 END GetCharAtPos;
-  70 
-  71 (*-------------------------Matching Procedures---------------------------*)
-  72 
-  73 PROCEDURE MatchNegRange(range:RegexParser.Range; VAR flag:BOOLEAN);
-  74 BEGIN
-  75         WriteMessage("MatchNegRange Entry");
-  76         IF sh.backTrack THEN WriteMessage("MatchNegRange backTrack");RETURN END;
-  77         REPEAT
-  78                 flag:=((ch<range.min) OR (ch>range.max));
-  79                 range:=range.next;
-  80         UNTIL range=NIL;
-  81         WriteMessage("MatchNegRange Exit");
-  82 END MatchNegRange;
-  83 
-  84 PROCEDURE MatchRange(range:RegexParser.Range; VAR flag:BOOLEAN);
-  85 BEGIN
-  86         WriteEntry("MatchRange ",ch,-1);
-  87         IF sh.backTrack THEN RETURN END;
-  88         LOOP
-  89                 IF range=NIL THEN EXIT END;
-  90                 Console.WriteString("MatchRange range.min: "); 
-  91                 Console.Write(range.min);
-  92                 Console.WriteString(" MatchRange range.max: "); 
-  93                 Console.Write(range.max);
-  94                 Console.WriteLn();
-  95                 flag:=((ch>=range.min) & (ch<=range.max));
-  96                 IF flag=TRUE THEN EXIT;
-  97                 ELSE range:=range.next END;
-  98         END;
-  99         (*  are there any  subRanges *)
- 100         LOOP
- 101                 IF range=NIL THEN EXIT END;
- 102                 IF range.sub THEN EXIT END;
- 103                 range:=range.next
- 104         END;
- 105         IF range#NIL THEN MatchNegRange(range,flag) END;
- 106         
- 107         WriteExit("MatchRange ch ",0,ch,-1);
- 108 END MatchRange;
+  51         WriteMessage("MatchNegRange Entry");
+  52         IF sh.backTrack THEN WriteMessage("MatchNegRange backTrack");RETURN END;
+  53         REPEAT
+  54                 flag:=((rch.ch<range.min) OR (rch.ch>range.max));
+  55                 range:=range.next;
+  56         UNTIL range=NIL;
+  57         WriteMessage("MatchNegRange Exit");
+  58 END MatchNegRange;
+  59 
+  60 PROCEDURE MatchRange(range:RegexParser.Range; VAR flag:BOOLEAN);
+  61 BEGIN
+  62         WriteEntry("MatchRange ",rch.ch,-1);
+  63         IF sh.backTrack THEN RETURN END;
+  64         LOOP
+  65                 IF range=NIL THEN EXIT END;
+  66                 Console.WriteString("MatchRange range.min: "); 
+  67                 Console.Write(range.min);
+  68                 Console.WriteString(" MatchRange range.max: "); 
+  69                 Console.Write(range.max);
+  70                 Console.WriteLn();
+  71                 flag:=((rch.ch>=range.min) & (rch.ch<=range.max));
+  72                 IF flag=TRUE THEN EXIT;
+  73                 ELSE range:=range.next 
+  74                 END;
+  75         END;
+  76         (*  are there any  subRanges *)
+  77         LOOP
+  78                 IF range=NIL THEN EXIT END;
+  79                 IF range.sub THEN EXIT END;
+  80                 range:=range.next
+  81         END;
+  82         IF range#NIL THEN MatchNegRange(range,flag) END;
+  83         
+  84         WriteExit("MatchRange ch ",0,rch.ch,-1);
+  85 END MatchRange; 
+  86 
+  87 
+  88 PROCEDURE MatchChar(Ptr:POINTER TO ARRAY OF CHAR;rch:texts.RichChar):BOOLEAN;
+  89 
+  90 BEGIN
+  91         (* TO DO *)
+  92         RETURN TRUE;
+  93 
+  94 END MatchChar;
+  95 
+  96 PROCEDURE Size(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+  97 BEGIN
+  98         IF regex.Font.size = NIL THEN RETURN TRUE
+  99         ELSE RETURN MatchChar(regex.Font.size,rch);
+ 100         END; 
+ 101 END Size;
+ 102 
+ 103 PROCEDURE Style(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+ 104 BEGIN
+ 105         IF regex.Font.style = NIL THEN RETURN TRUE
+ 106         ELSE RETURN MatchChar(regex.Font.style,rch);
+ 107         END; 
+ 108 END Style;
  109 
- 110 PROCEDURE MatchRegex(reg:RegexParser.Regex;resetPos:INTEGER;VAR flag:BOOLEAN);
-**** -------------------------------------------^
+ 110 PROCEDURE Typeface(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+ 111 BEGIN
+ 112         IF regex.Font.typeface = NIL THEN RETURN TRUE
+ 113         ELSE RETURN MatchChar(regex.Font.typeface,rch);
+ 114         END; 
+ 115 END Typeface;
+ 116 
+ 117 PROCEDURE Weight(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+ 118 BEGIN
+ 119         IF regex.Font.weight = NIL THEN RETURN TRUE
+ 120         ELSE RETURN MatchChar(regex.Font.weight,rch);
+ 121         END; 
+ 122 END Weight;
+ 123 
+ 124 PROCEDURE Color(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
+ 125 BEGIN
+ 126         IF regex.Font.color = NIL THEN RETURN TRUE
+ 127         ELSE RETURN MatchChar(regex.Font.color,rch);
+ 128         END; 
+ 129 END Color;
+ 130 
+ 131 
+ 132 PROCEDURE FontMatch(rch:texts.RichChar; regex:RegexParser.Regex):INTEGER;
+ 133 
+ 134         
+ 135 
+ 136 BEGIN
+ 137         IF regex.Font=NIL THEN RETURN 1 
+ 138         ELSIF Size(regex,rch) & Style(regex,rch) & Typeface(regex,rch) &  
+ 139                 Weight(regex,rch) & Color(regex,rch) THEN
+ 140                 RETURN 1 
+ 141         ELSE RETURN -1
+ 142         END;
+ 143 END FontMatch;
+ 144 
+ 145 
+ 146 PROCEDURE MatchRegex(regex:RegexParser.Regex;resetPos:INTEGER;VAR flag:BOOLEAN);
+**** ---------------------^
 **** Warning: This variable is accessed from nested procedure
+**** ---------------------------------------------^
+**** Warning: This variable is accessed from nested procedure
+**** Access to variable <regex> will be inefficient
 **** Access to variable <resetPos> will be inefficient
- 111 VAR  branch:RegexParser.Branch;
- 112                 j:INTEGER (*ResetPosition*);
- 113                 res:INTEGER;
- 114         
- 115         PROCEDURE MatchBranch(branch:RegexParser.Branch; VAR flag:BOOLEAN);
- 116         VAR piece:RegexParser.Piece;
+ 147 VAR  branch:RegexParser.Branch;
+ 148                 j:INTEGER (*ResetPosition*);
+ 149                 res:INTEGER;
+ 150         
+ 151         PROCEDURE MatchBranch(branch:RegexParser.Branch; VAR flag:BOOLEAN);
+ 152         VAR piece:RegexParser.Piece;
 **** ------------^ Warning: This variable is accessed from nested procedure
 **** Access to variable <piece> will be inefficient
- 117         res:INTEGER;
- 118         
- 119                 PROCEDURE MatchPiece(piece:RegexParser.Piece; VAR flag:BOOLEAN);
- 120                 VAR atom,temp_atom:RegexParser.Atom;
- 121                                 min,max (* nr repetitions *),
- 122                                 q (*counts number matches for quantified or for '*' or '+'*),
- 123                                 j1:INTEGER (* interim value for i; formerly j; is named here j1 for
- 124                                 difference with j in MatchRegex *);
- 125                                 temp_flag:BOOLEAN;
- 126                                 res:INTEGER;
- 127                                 
- 128                         PROCEDURE MatchAtom(atom:RegexParser.Atom; VAR flag:BOOLEAN);
- 129                         VAR range:RegexParser.Range;res:INTEGER;
- 130                         
- 131                                 
- 132                         BEGIN (* MatchAtom *)
- 133                                 WriteEntry("MatchAtom ",' ',-1);
- 134                                 IF sh.backTrack THEN 
- 135                                         WriteMessage("MatchAtom sh.backTrack RETURN");
- 136                                         RETURN 
- 137                                 END;
- 138                                 IF atom.range=NIL THEN  
- 139                                         WriteMessage("MatchAtom range Nil vor MatchRegex");
- 140                                         MatchRegex(atom.regex,resetPos,flag);
-**** Warning: Non-local variable access here-----------------------^
- 141                                 ELSE    
- 142                                 
- 143                                         IF ~(ch=0X) THEN 
- 144                                                 
- 145                                                 (*ch:= GetCharAtPos(i,sh);*) (* sh.getCharAtTextPos(i); *)      
- 146                                                 ch := sh.getSym();
- 147                                                         
- 148                                                 IF sh.backTrack THEN 
- 149                                                         WriteMessage("MatchAtom sh.backtrach nach getSym");
- 150                                                         RETURN 
- 151                                                 END;                    
- 152                                                 (*INC(i);*)
- 153                                                 Console.WriteString("MatchAtom getSym ch: ");
- 154                                                 Console.Write(ch); 
- 155                                                 Console.WriteLn();
- 156                                         END;                    
- 157                                         IF atom.range.pos THEN
- 158                                                 WriteMessage("MatchAtom range.pos vor MatchRange");
- 159                                                 MatchRange(atom.range,flag); 
- 160                                         ELSE 
- 161                                                 WriteMessage("MatchAtom vor MatchNegRange");
- 162                                                 MatchNegRange(atom.range,flag);
- 163                                         END;
- 164                                 
- 165                                 END;
- 166                                 IF flag THEN res:=1 
+ 153         res:INTEGER;
+ 154         
+ 155                 PROCEDURE MatchPiece(piece:RegexParser.Piece; VAR flag:BOOLEAN);
+ 156                 VAR atom,temp_atom:RegexParser.Atom;
+ 157                                 min,max (* nr repetitions *),
+ 158                                 q (*counts number matches for quantified or for '*' or '+'*),
+ 159                                 j1:INTEGER (* interim value for i; formerly j; is named here j1 for
+ 160                                 difference with j in MatchRegex *);
+ 161                                 temp_flag:BOOLEAN;
+ 162                                 res:INTEGER;
+ 163                                 
+ 164                         PROCEDURE MatchAtom(atom:RegexParser.Atom; VAR flag:BOOLEAN);
+ 165                         VAR range:RegexParser.Range;res:INTEGER;
+ 166                         
  167                                 
- 168                                 ELSE
- 169                                         res:=-1;
- 170                                 END;
- 171                                 
- 172                                 WriteExit("MatchAtom result, ch ",res,ch,-1);
- 173                         END MatchAtom;
- 174                         
- 175                 BEGIN (*MatchPiece*) (*hier Matching-Procedures aufrufen piece.MatchProcQuantified(piece,flag)*)
- 176                         (*MatchProcOptional (?)*)
- 177                         WriteEntry("MatchPiece ",0X,-1);
- 178                         IF sh.backTrack THEN RETURN END;
- 179                         flag:=FALSE;
- 180                         temp_flag:=FALSE;
- 181                         q:=0;
- 182                         (* get value of i, needed in repeat loops down case 2 and case 3 *)
- 183                         i := sh.getSharedText().getParsePos();
- 184                         CASE piece.id OF 
- 185                                 1:  (* question mark, '?', optional *)
- 186                                         WriteMessage("MatchPiece Case 1 Optional");
- 187                                 
- 188                                         atom:=piece.atom;   
- 189                                         min:=0;
- 190                                         max:=1;
- 191                                         WriteMessage("MatchPiece Case 1 Optional vor MatchAtom");
- 192                                         MatchAtom(atom,flag);
- 193                                         IF sh.backTrack THEN RETURN END;
- 194                                         IF ~flag THEN flag:=TRUE;
- 195                                                 IF atom.regex=NIL THEN DEC(i) END
- 196                                         END; 
- 197                                         sh.getSharedText().setParsePos(i);
- 198                 
- 199                                 |2: (* repetitions, quantified (???) *)
- 200                                         WriteMessage("MatchPiece Case 2 Quantifierd");
- 201                                         atom:=piece.atom;   (*Quantified*)
- 202                                         min:=piece.min.val;
- 203                                         max:=piece.max.val;
- 204                                         Console.WriteString("MatchPiece min");Console.WriteInt(min,2);
- 205                                         Console.WriteString("MatchPiece max");Console.WriteInt(max,2);
- 206                                         q:=0;
- 207                                         
- 208                                         
- 209                                         j1:=i;
- 210                                         REPEAT 
- 211                                                 WriteMessage("MatchPiece Case 2 quantified in Repeat vor MatchAtom");
- 212                                                 MatchAtom(atom,flag);
- 213                                                 i:=sh.getSharedText().getParsePos();
- 214                                                 IF sh.backTrack THEN 
- 215                                                         WriteMessage("MatchPiece in Repeat sh.backTrack");
- 216                                                         RETURN 
- 217                                                 END;
- 218                                                 IF flag THEN INC(q) END;
- 219                                         UNTIL (~flag) OR (q=max);
- 220                                         IF ~flag & (q>=min) THEN flag:=TRUE; 
- 221                                                 IF atom.regex=NIL THEN DEC(i) END 
- 222                                         END;
- 223                                         sh.getSharedText().setParsePos(i);
- 224                                         
- 225                                 |3: (* asterisk('*' ) or plus('+') *)
- 226                                         WriteMessage("MatchPiece Case 3 * or + ");
- 227                                         atom:=piece.atom; (*Unbounded*) (*max=NIL*)
- 228                                         temp_atom:=piece.suc.atom;
- 229                                         min:=piece.min.val;
- 230                                         REPEAT 
- 231                                                 WriteMessage("MatchPiece case 3 * or + in Repeat vor MatchAtom 1");
- 232                                                 MatchAtom(atom,flag);
- 233                                                 IF sh.backTrack THEN RETURN END;
- 234                                                 i:=sh.getSharedText().getParsePos();
- 235                                                 (* j1: save increased i before decreasing;reset
- 236                                                 parsePosition *)
- 237                                                 j1:=i;
- 238                                                 DEC(i); 
- 239                                                 sh.getSharedText().setParsePos(i);
- 240                                                 WriteMessage("MatchPiece case 3 * or + in Repeat vor MatchAtom 2");
- 241                                                 
- 242                                                 MatchAtom(temp_atom,temp_flag);
- 243                                                 i := sh.getSharedText().getParsePos();
- 244                                                 IF temp_atom.regex#NIL THEN i:=j1; 
- 245                                                         sh.getSharedText().setParsePos(i);
- 246                                                 END;
- 247                                                 IF flag THEN INC(q) END;
- 248                                                 IF temp_flag THEN DEC(q); flag:=FALSE END;
- 249                                         UNTIL (~flag);
- 250                                         IF ~flag & (q>=min) THEN flag:=TRUE; 
- 251                                                 IF atom.regex=NIL THEN DEC(i) END 
- 252                                         END;
- 253                                         (*                                                        *)
- 254                                         sh.getSharedText().setParsePos(i);
- 255                 
- 256                         END (*end-case*);
- 257                         IF sh.backTrack THEN RETURN 
- 258                         END;
- 259                         IF flag THEN res:=1 ELSE res:=-1;
- 260                         END;
- 261                         
- 262                         WriteExit("MatchPiece: ",res,ch,i);
- 263                 END MatchPiece; 
- 264                 
- 265                 PROCEDURE Final():BOOLEAN;
- 266                 (* JR to be refined ? *)
- 267                 BEGIN
- 268                         IF sh.backTrack THEN RETURN FALSE END;
- 269                         IF piece.suc=NIL THEN
+ 168                         BEGIN (* MatchAtom *)
+ 169                                 WriteEntry("MatchAtom ",' ',-1);
+ 170                                 IF sh.backTrack THEN 
+ 171                                         WriteMessage("MatchAtom sh.backTrack RETURN");
+ 172                                         RETURN 
+ 173                                 END;
+ 174                                 IF atom.range=NIL THEN  
+ 175                                         WriteMessage("MatchAtom range Nil vor MatchRegex");
+ 176                                         MatchRegex(atom.regex,resetPos,flag);
+**** Warning: Non-local variable access here-----------------------^
+ 177                                 ELSE    
+ 178                                 
+ 179                                         IF ~(rch.ch=0X) THEN 
+ 180                                                 
+ 181                                                 (*ch:= GetCharAtPos(i,sh);*) (* sh.getCharAtTextPos(i); *)      
+ 182                                                 rch := sh.getSym();
+ 183                                                         
+ 184                                                 IF sh.backTrack THEN 
+ 185                                                         WriteMessage("MatchAtom sh.backtrach nach getSym");
+ 186                                                         RETURN 
+ 187                                                 END;                    
+ 188                                                 (*INC(i);*)
+ 189                                                 Console.WriteString("MatchAtom getSym ch: ");
+ 190                                                 Console.Write(rch.ch); 
+ 191                                                 Console.WriteLn();
+ 192                                         END;                    
+ 193                                         IF atom.range.pos THEN
+ 194                                                 WriteMessage("MatchAtom range.pos vor MatchRange");
+ 195                                                 MatchRange(atom.range,flag); 
+ 196                                         ELSE 
+ 197                                                 WriteMessage("MatchAtom vor MatchNegRange");
+ 198                                                 MatchNegRange(atom.range,flag);
+ 199                                         END;
+ 200                                 
+ 201                                 END;
+ 202                                 IF flag THEN 
+ 203                                         res:= FontMatch(rch,regex);
+**** Warning: Non-local variable access here---------------------^
+ 204                                         
+ 205                                 ELSE
+ 206                                         res:=-1;
+ 207                                 END;
+ 208                                 
+ 209                                 WriteExit("MatchAtom result, ch ",res,rch.ch,-1);
+ 210                         END MatchAtom;
+ 211                         
+ 212                 BEGIN (*MatchPiece*) (*hier Matching-Procedures aufrufen piece.MatchProcQuantified(piece,flag)*)
+ 213                         (*MatchProcOptional (?)*)
+ 214                         WriteEntry("MatchPiece ",0X,-1);
+ 215                         IF sh.backTrack THEN RETURN END;
+ 216                         flag:=FALSE;
+ 217                         temp_flag:=FALSE;
+ 218                         q:=0;
+ 219                         (* get value of i, needed in repeat loops down case 2 and case 3 *)
+ 220                         i := sh.getSharedText().getParsePos();
+ 221                         CASE piece.id OF 
+ 222                                 1:  (* question mark, '?', optional *)
+ 223                                         WriteMessage("MatchPiece Case 1 Optional");
+ 224                                 
+ 225                                         atom:=piece.atom;   
+ 226                                         min:=0;
+ 227                                         max:=1;
+ 228                                         WriteMessage("MatchPiece Case 1 Optional vor MatchAtom");
+ 229                                         MatchAtom(atom,flag);
+ 230                                         IF sh.backTrack THEN RETURN END;
+ 231                                         IF ~flag THEN flag:=TRUE;
+ 232                                                 IF atom.regex=NIL THEN DEC(i) END
+ 233                                         END; 
+ 234                                         sh.getSharedText().setParsePos(i);
+ 235                 
+ 236                                 |2: (* repetitions, quantified (???) *)
+ 237                                         WriteMessage("MatchPiece Case 2 Quantifier ");
+ 238                                         atom:=piece.atom;   (*Quantified*)
+ 239                                         min:=piece.min.val;
+ 240                                         max:=piece.max.val;
+ 241                                         Console.WriteString("MatchPiece min");Console.WriteInt(min,2);
+ 242                                         Console.WriteString("MatchPiece max");Console.WriteInt(max,2);
+ 243                                         q:=0;
+ 244                                         
+ 245                                         
+ 246                                         j1:=i;
+ 247                                         REPEAT 
+ 248                                                 WriteMessage("MatchPiece Case 2 quantified in Repeat vor MatchAtom");
+ 249                                                 MatchAtom(atom,flag);
+ 250                                                 i:=sh.getSharedText().getParsePos();
+ 251                                                 IF sh.backTrack THEN 
+ 252                                                         WriteMessage("MatchPiece in Repeat sh.backTrack");
+ 253                                                         RETURN 
+ 254                                                 END;
+ 255                                                 IF flag THEN INC(q) END;
+ 256                                         UNTIL (~flag) OR (q=max);
+ 257                                         IF ~flag & (q>=min) THEN flag:=TRUE; 
+ 258                                                 IF atom.regex=NIL THEN DEC(i) END 
+ 259                                         END;
+ 260                                         sh.getSharedText().setParsePos(i);
+ 261                                         
+ 262                                 |3: (* asterisk('*' ) or plus('+') *)
+ 263                                         WriteMessage("MatchPiece Case 3 * or + ");
+ 264                                         atom:=piece.atom; (*Unbounded*) (*max=NIL*)
+ 265                                         temp_atom:=piece.suc.atom;
+ 266                                         min:=piece.min.val;
+ 267                                         REPEAT 
+ 268                                                 WriteMessage("MatchPiece case 3 * or + in Repeat vor MatchAtom 1");
+ 269                                                 MatchAtom(atom,flag);
+ 270                                                 IF sh.backTrack THEN RETURN END;
+ 271                                                 i:=sh.getSharedText().getParsePos();
+ 272                                                 (* j1: save increased i before decreasing;reset
+ 273                                                 parsePosition *)
+ 274                                                 j1:=i;
+ 275                                                 DEC(i); 
+ 276                                                 sh.getSharedText().setParsePos(i);
+ 277                                                 WriteMessage("MatchPiece case 3 * or + in Repeat vor MatchAtom 2");
+ 278                                                 
+ 279                                                 MatchAtom(temp_atom,temp_flag);
+ 280                                                 i := sh.getSharedText().getParsePos();
+ 281                                                 IF temp_atom.regex#NIL THEN i:=j1; 
+ 282                                                         sh.getSharedText().setParsePos(i);
+ 283                                                 END;
+ 284                                                 IF flag THEN INC(q) END;
+ 285                                                 IF temp_flag THEN DEC(q); flag:=FALSE END;
+ 286                                         UNTIL (~flag);
+ 287                                         IF ~flag & (q>=min) THEN flag:=TRUE; 
+ 288                                                 IF atom.regex=NIL THEN DEC(i) END 
+ 289                                         END;
+ 290                                         (*                                                        *)
+ 291                                         sh.getSharedText().setParsePos(i);
+ 292                 
+ 293                         END (*end-case*);
+ 294                         IF sh.backTrack THEN RETURN 
+ 295                         END;
+ 296                         IF flag THEN res:=1 ELSE res:=-1;
+ 297                         END;
+ 298                         
+ 299                         WriteExit("MatchPiece: ",res,rch.ch,i);
+ 300                 END MatchPiece; 
+ 301                 
+ 302                 PROCEDURE Final():BOOLEAN;
+ 303                 (* JR to be refined ? *)
+ 304                 BEGIN
+ 305                         IF sh.backTrack THEN RETURN FALSE END;
+ 306                         IF piece.suc=NIL THEN
 **** ---------------------------^ Warning: Non-local variable access here
- 270                                 IF piece.atom # NIL THEN
+ 307                                 IF piece.atom # NIL THEN
 **** -----------------------------------^
 **** Warning: Non-local variable access here
- 271                                         IF piece.atom.range#NIL THEN
+ 308                                         IF piece.atom.range#NIL THEN
 **** Warning: Non-local variable access here----^
- 272                                                 IF (piece.atom.range.min=0X) & (piece.atom.range.max=0X) THEN RETURN TRUE;
+ 309                                                 IF (piece.atom.range.min=0X) & (piece.atom.range.max=0X) THEN RETURN TRUE;
 **** Warning: Non-local variable access here-------------^
 **** Warning: Non-local variable access here-----------------------------------------^
- 273                                                 END;
- 274                                         END;
- 275                                 END;                                    
- 276                         END;
- 277                         RETURN FALSE;
- 278                 END Final;
- 279                 
- 280         BEGIN (*MatchBranch*)
- 281                 WriteEntry("MatchBranch ",0X,-1);
- 282                 
- 283                 piece:=branch.piece;
- 284                 LOOP 
- 285                         IF (piece=NIL) OR Final()(*JR*) THEN  EXIT; (*alle Pieces abgearbeitet und ganzen String*)
- 286                         END;
- 287                         WriteMessage("matchBranch vor MatchPiece in Loop");
- 288                         MatchPiece(piece,flag);
- 289                         WriteMessage("matchBranch nach MatchPiece in Loop");
- 290                         IF sh.backTrack THEN RETURN 
- 291                         END;
- 292                         IF flag THEN  piece:=piece.suc; 
- 293                                 
- 294                         ELSE EXIT 
- 295                         END;
- 296                 END;
- 297                 IF flag THEN res:=1 ELSE res:=-1;
- 298                 END;
- 299                 WriteExit("MatchBranch ch ",res,ch,-1);
- 300         END MatchBranch;
- 301 
- 302 (*TODO reset???*)
- 303 BEGIN (*MatchRegex*)
- 304         j:=i; (* save position *)
- 305         WriteEntry("MatchRegex ch  i (= j): ",' ',i);
- 306         branch:=reg.branch;
- 307         
- 308         LOOP
- 309                 IF (branch=NIL) THEN EXIT END; 
- 310                 MatchBranch(branch,flag);
- 311                 IF sh.backTrack THEN RETURN END;
- 312                 IF flag THEN EXIT;
- 313                 ELSE 
- 314                         
- 315                         (*      Out.String("MatchRegex: Branch False  j= ");
- 316                         Out.Int(j,2);Out.String("ch=");Out.Char(ch);Out.Ln();*)
- 317                         Console.WriteLn();Console.WriteString("MatchRegex Branch false j:");
- 318                         Console.WriteInt(j,2);Console.WriteString(" ch=");
- 319                         Console.Write(ch);Console.WriteLn();
- 320                         (* reset,
- 321                         toDo parsePos*)
- 322                         i:=j;
- 323                         (*        ch:=tarString[i];     *)
- 324                         (*****************
- 325                         ch := GetCharAtPos(i,sh); 
- 326                         ***************************)
- 327                         (*sh.getCharAtTextPos(i);*)
- 328                         IF sh.backTrack THEN RETURN END;
- 329                         branch:=branch.alt
- 330                 END
- 331         END;
- 332         IF flag THEN res:=1 ELSE res:=-1;END;
- 333         WriteExit("MatchRegex ch ",res,ch,i);
- 334 END MatchRegex;
- 335                                 
- 336 PROCEDURE Match*(regex:RegexParser.Regex;target:POINTER TO ARRAY OF CHAR):BOOLEAN;
- 337 VAR flag:BOOLEAN; branch:RegexParser.Branch;dummy:INTEGER;
- 338 BEGIN
- 339         (*tarString:=target;*)
- 340         
- 341         flag:=FALSE;
- 342         i:=0;
- 343         (*ch:=tarString[i];*)
- 344         dummy:=0;
- 345         MatchRegex(regex,dummy,flag);
- 346         IF sh.backTrack THEN i:=0; RETURN FALSE END;
- 347         IF ch#0X THEN (*ch:=tarString[i]*) ch:=0X; END;
- 348         IF (flag) & (ch#0X) THEN flag:=FALSE END;
- 349         RETURN flag
- 350 END Match; 
- 351 
- 352 (* called from ebnf-parser *)
- 353 PROCEDURE EditMatch*(regex:RegexParser.Regex;shared:texts.Shared):BOOLEAN;
- 354 VAR flag:BOOLEAN;
- 355 BEGIN
- 356         WriteEntry("RegexMatching.EditMatch ",0X,-1);
- 357         flag:=FALSE;
- 358         sh:=shared;
- 359         
- 360         i:=shared.getSharedText().getParsePos();
- 361         
- 362         Console.WriteString("RegexMatching.EditMatch i: ");
- 363         Console.WriteInt(i,2);
- 364         Console.WriteLn;
- 365         (*ch:='$';*) (* GetCharAtPos(i,sh); shared.getCharAtTextPos(i);*)
- 366         (*ch := shared.getSharedText().getTextCharAtPos(i);*)
- 367         (*ch := shared.getSym();*) ch:=' ';(*dummy*)
- 368         Console.WriteString("RegexMatching.EditMatch ch: ");
- 369         Console.Write(ch);
- 370         Console.WriteLn;
- 371         Console.WriteString("RegexMatching.EditMatch TextLen: ");
- 372         Console.WriteInt(shared.getSharedText().getTextLen(),2);
- 373         Console.WriteLn;
- 374         MatchRegex(regex,i,flag);
- 375         IF sh.backTrack THEN i:=0; 
- 376                 (* reset todo*)
- 377                 RETURN FALSE; 
- 378         END;
- 379         RETURN flag;
- 380         
- 381 END EditMatch;
- 382 
- 383 
- 384 (*
- 385 
- 386 PROCEDURE MatchString*(str:ARRAY OF CHAR;shared:texts.Shared):BOOLEAN;
- 387 
- 388 VAR posInString,resetPos, len:INTEGER;ch:CHAR; 
- 389 
- 390         PROCEDURE length(str:ARRAY OF CHAR): INTEGER;
- 391         VAR len:INTEGER;
- 392         BEGIN
- 393                 FOR len:=0 TO 256 DO
- 394                         IF str[len] = 0X THEN RETURN len;
- 395                         END;
- 396                 END;
- 397                 RETURN -1;
- 398         END length;
- 399 
- 400 BEGIN (*MatchString*)
- 401         Console.WriteString("Matching.MatchString  ");
- 402         Console.WriteString(str);
- 403         Console.WriteLn;
- 404         posInString := 0;
- 405         resetPos:=shared.getSharedText().getParsePos();
+ 310                                                 END;
+ 311                                         END;
+ 312                                 END;                                    
+ 313                         END;
+ 314                         RETURN FALSE;
+ 315                 END Final;
+ 316                 
+ 317         BEGIN (*MatchBranch*)
+ 318                 WriteEntry("MatchBranch ",0X,-1);
+ 319                 
+ 320                 piece:=branch.piece;
+ 321                 LOOP 
+ 322                         IF (piece=NIL) OR Final()(*JR*) THEN  EXIT; (*alle Pieces abgearbeitet und ganzen String*)
+ 323                         END;
+ 324                         WriteMessage("matchBranch vor MatchPiece in Loop");
+ 325                         MatchPiece(piece,flag);
+ 326                         WriteMessage("matchBranch nach MatchPiece in Loop");
+ 327                         IF sh.backTrack THEN RETURN 
+ 328                         END;
+ 329                         IF flag THEN  piece:=piece.suc; 
+ 330                                 
+ 331                         ELSE EXIT 
+ 332                         END;
+ 333                 END;
+ 334                 IF flag THEN res:=1 ELSE res:=-1;
+ 335                 END;
+ 336                 WriteExit("MatchBranch ch ",res,rch.ch,-1);
+ 337         END MatchBranch;
+ 338 
+ 339 (*TODO reset???*)
+ 340 BEGIN (*MatchRegex*)
+ 341         j:=i; (* save position *)
+ 342         WriteEntry("MatchRegex ch  i (= j): ",' ',i);
+ 343         branch:=regex.branch;
+ 344         
+ 345         LOOP
+ 346                 IF (branch=NIL) THEN EXIT END; 
+ 347                 MatchBranch(branch,flag);
+ 348                 IF sh.backTrack THEN RETURN END;
+ 349                 IF flag THEN EXIT;
+ 350                 ELSE 
+ 351                         
+ 352                         (*      
+ 353                                 Out.String("MatchRegex: Branch False  j= ");
+ 354                         Out.Int(j,2);Out.String("ch=");Out.Char(ch);Out.Ln();
+ 355                         
+ 356                         *)
+ 357                         
+ 358                         Console.WriteLn();Console.WriteString("MatchRegex Branch false j:");
+ 359                         Console.WriteInt(j,2);Console.WriteString(" ch=");
+ 360                         Console.Write(rch.ch);Console.WriteLn();
+ 361                         (* reset,
+ 362                         toDo parsePos*)
+ 363                         i:=j;
+ 364                         (*        ch:=tarString[i];     *)
+ 365                         (*****************
+ 366                         ch := GetCharAtPos(i,sh); 
+ 367                         ***************************)
+ 368                         (*sh.getCharAtTextPos(i);*)
+ 369                         IF sh.backTrack THEN RETURN END;
+ 370                         branch:=branch.alt
+ 371                 END
+ 372         END;
+ 373         IF flag THEN res:=1 ELSE res:=-1;END;
+ 374         WriteExit("MatchRegex ch ",res,rch.ch,i);
+ 375 END MatchRegex;
+ 376                                 
+ 377 PROCEDURE Match*(regex:RegexParser.Regex;target:POINTER TO ARRAY OF CHAR):BOOLEAN;
+ 378 VAR flag:BOOLEAN; branch:RegexParser.Branch;dummy:INTEGER;
+ 379 BEGIN
+ 380 
+ 381         (*___________________________________________
+ 382         (*tarString:=target;*)
+ 383         
+ 384         flag:=FALSE;
+ 385         i:=0;
+ 386         (*ch:=tarString[i];*)
+ 387         dummy:=0;
+ 388         MatchRegex(regex,dummy,flag);
+ 389         IF sh.backTrack THEN i:=0; RETURN FALSE END;
+ 390         IF ch#0X THEN (*ch:=tarString[i]*) ch:=0X; END;
+ 391         IF (flag) & (ch#0X) THEN flag:=FALSE END;
+ 392         RETURN flag
+ 393         -----------------------------------------*)
+ 394         RETURN FALSE;
+ 395 END Match; 
+ 396 
+ 397 (* called from ebnf-parser *)
+ 398 PROCEDURE EditMatch*(regex:RegexParser.Regex;shared:texts.Shared):BOOLEAN;
+ 399 VAR flag:BOOLEAN;
+ 400 BEGIN
+ 401         WriteEntry("RegexMatching.EditMatch ",0X,-1);
+ 402         flag:=FALSE;
+ 403         sh:=shared;
+ 404         
+ 405         i:=shared.getSharedText().getParsePos();
  406         
- 407         len :=length(str);
- 408         
- 409         Console.WriteString("MatchString len: ");
- 410         Console.WriteInt(len,2);
- 411         Console.WriteLn;
- 412         WHILE posInString < len DO
- 413                 ch:=shared.getSym();
- 414                 Console.Write(ch);Console.WriteLn;
- 415         
- 416                 IF ch # str[posInString] THEN
- 417                         (* reset *)
- 418                         shared.getSharedText().setParsePos(resetPos);
- 419                         Console.WriteString("Matching.MatchString FALSE ");
- 420                         Console.WriteLn;
- 421                         RETURN FALSE;
- 422                 ELSE 
- 423                         INC(posInString);
- 424                         
- 425                 END;
- 426         END (* while *);
+ 407         Console.WriteString("RegexMatching.EditMatch i: ");
+ 408         Console.WriteInt(i,2);
+ 409         Console.WriteLn;
+ 410         (*ch:='$';*) (* GetCharAtPos(i,sh); shared.getCharAtTextPos(i);*)
+ 411         (*ch := shared.getSharedText().getTextCharAtPos(i);*)
+ 412         (*ch := shared.getSym();*) 
+ 413         (*******************************************)
+ 414         NEW(rch);       rch.ch:=' '; (*dummy*)
+ 415         (*Console.WriteString("RegexMatching.EditMatch ch: ");
+ 416         Console.Write(rch.ch);
+ 417         Console.WriteLn;*)
+ 418         Console.WriteString("RegexMatching.EditMatch TextLen: ");
+ 419         Console.WriteInt(shared.getSharedText().getTextLen(),2);
+ 420         Console.WriteLn;
+ 421         MatchRegex(regex,i,flag);
+ 422         IF sh.backTrack THEN i:=0; 
+ 423                 (* reset todo*)
+ 424                 RETURN FALSE; 
+ 425         END;
+ 426         RETURN flag;
  427         
- 428         Console.WriteString("Matching.MatchString TRUE ");
- 429         Console.WriteLn;
- 430         RETURN TRUE;
- 431 END MatchString;
- 432 
- 433 
- 434 PROCEDURE GetStartCh*(shared:texts.Shared);
- 435 BEGIN
- 436         ch:=shared.getSym();
- 437         WriteEntry("GetStartCh: ",ch,-1);
- 438         i:=0;
- 439 END GetStartCh;
- 440 *)
- 441 
- 442 
- 443 
- 444 END RegexMatching.
+ 428 END EditMatch;
+ 429 
+ 430 
+ 431 
+ 432 END RegexMatching.
 
-There were: No errors, and  9 warnings
+There were: No errors, and  10 warnings
 
 
