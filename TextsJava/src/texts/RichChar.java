@@ -2,7 +2,7 @@ package texts;
 
 
 public class RichChar {
-	char ch;
+	public char ch;
 	boolean success;
 	int textDecoration;
 }

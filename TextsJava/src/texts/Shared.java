@@ -11,6 +11,8 @@ public class Shared {
 	
 	//private int internalCaretPos=0;
 	
+	public static int maxPosInParse=0;  /* maxPosition of chars read. is used to indicate position
+				of error in input   */ 
 	public boolean backTrack=false;
 	// parsePos is position of sign processed in EBNF parser;
 	// parsePos is compared to caretPos;
@@ -81,7 +83,7 @@ public class Shared {
 	// End of Json interfacing   
 	***********************************************************************************/
 	
-	public synchronized char getSym(){
+	public synchronized RichChar getSym(){
 		System.out.println("Shared.getSym entry");
 		if (caretPos>sharedText.getParsePos()) available=true;
 		try {
@@ -96,11 +98,12 @@ public class Shared {
 		available=false;
 		//
 		
-		
-		char ch= this.sharedText.getTextCharAtPos(this.sharedText.getParsePos());
+		RichChar ch= new RichChar();
+		ch.ch= this.sharedText.getTextCharAtPos(this.sharedText.getParsePos());
 		this.sharedText.incParsePos();
 		// sharedText.text[sharedText.getTextPos()];
 		//this.sharedText.incTextPos();
+		System.out.println("getSym rch: "+ch.ch);
 		return ch;
 		
 	}
@@ -112,6 +115,7 @@ public class Shared {
 		+ " maxPosInParse: "+maxPosInParse);
 		return (caretPos>maxPosInParse);
 	}
+	
 	public static boolean available() {
 		return available;
 	}

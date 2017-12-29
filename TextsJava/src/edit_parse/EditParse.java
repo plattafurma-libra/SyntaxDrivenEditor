@@ -1,6 +1,7 @@
 package edit_parse;
 
 import texts.Shared;
+import texts.RichChar;
 import CP.Ebnf.*;
 
 
@@ -32,16 +33,16 @@ public class EditParse {
 		   }
 		   
 		   // here to enter editParse CP
-		   private void word(){
+		  /* private void word(){
 			   StringBuffer word=new StringBuffer();
 			   System.out.println("word entry");
 			   while(true){
 				   try {
-					   char ch= shared.getSym();
-					   System.out.println("word ch: "+ch);
-					   if ((ch!=' ') && (ch != '\r')&&(ch!='\n')&&(ch!='$')) word.append(ch);
+					   RichChar ch= shared.getSym();
+					   System.out.println("word ch: "+ch.ch);
+					   if ((ch.ch!=' ') && (ch.ch != '\r')&&(ch.ch!='\n')&&(ch.ch!='$')) word.append(ch);
 					   else {System.out.println(); 
-					   		stop=ch=='$';
+					   		stop=ch.ch=='$';
 					   		break;
 					   	};
 				   
@@ -53,6 +54,8 @@ public class EditParse {
 			   System.out.println("word: "+word);
 			   System.out.println("word exit");
 		   }// word
+		   
+		   */
 		   
 		   private void syntaxDrivenEdit (){
 			  System.out.println("EditParse.syntaxDrivenEdit vor Ebnf.parse");
@@ -66,7 +69,7 @@ public class EditParse {
 					  else 
 					  	{System.out.println
 						 ("EditParse.syntaxDrivenEdit Ebnf.parse failed ErrorPosition: "
-					  	 +Ebnf.maxPosInParse);
+					  	 +texts.Shared.maxPosInParse);
 					  	break;}
 			  			  
 				  } catch (Exception e){
