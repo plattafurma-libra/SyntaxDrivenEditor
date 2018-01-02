@@ -176,20 +176,17 @@ VAR  branch:RegexParser.Branch;
 					MatchRegex(atom.regex,resetPos,flag);
 				ELSE	
 				
-					IF ~(rch.ch=0X) THEN 
-						
-						(*ch:= GetCharAtPos(i,sh);*) (* sh.getCharAtTextPos(i);	*)	
-						rch := sh.getSym();
+					rch := sh.getSym();
 							
-						IF sh.backTrack THEN 
-							WriteMessage("MatchAtom sh.backtrach nach getSym");
-							RETURN 
-						END;			
-						(*INC(i);*)
-						Console.WriteString("MatchAtom getSym ch: ");
-						Console.Write(rch.ch); 
-						Console.WriteLn();
+					IF sh.backTrack THEN 
+						WriteMessage("MatchAtom sh.backtrach nach getSym");
+						RETURN 
 					END;			
+					
+					Console.WriteString("MatchAtom getSym ch: ");
+					Console.Write(rch.ch); 
+					Console.WriteLn();
+						
 					IF atom.range.pos THEN
 						WriteMessage("MatchAtom range.pos vor MatchRange");
 						MatchRange(atom.range,flag); 
@@ -407,14 +404,7 @@ BEGIN
 	Console.WriteString("RegexMatching.EditMatch i: ");
 	Console.WriteInt(i,2);
 	Console.WriteLn;
-	(*ch:='$';*) (* GetCharAtPos(i,sh); shared.getCharAtTextPos(i);*)
-	(*ch := shared.getSharedText().getTextCharAtPos(i);*)
-	(*ch := shared.getSym();*) 
-	(*******************************************)
-	NEW(rch);	rch.ch:=' '; (*dummy*)
-	(*Console.WriteString("RegexMatching.EditMatch ch: ");
-	Console.Write(rch.ch);
-	Console.WriteLn;*)
+	
 	Console.WriteString("RegexMatching.EditMatch TextLen: ");
 	Console.WriteInt(shared.getSharedText().getTextLen(),2);
 	Console.WriteLn;
