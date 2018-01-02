@@ -1,0 +1,97 @@
+Listing:
+
+   1 MODULE RegexApi;
+   2 
+   3 IMPORT RegexParser,RegexMatching, Console;
+**** -------------------^ Cannot open symbol file
+**** Filename <RegexMatching.cps>
+   4 
+   5 TYPE Regex*=POINTER TO RECORD
+   6                 regex*:RegexParser.Regex
+   7          END;
+   8 
+   9 (*-----------------------------Aux-Method------------------------------*)
+  10 PROCEDURE ArrayToPointer*(arr:ARRAY OF CHAR; VAR ptr:POINTER TO ARRAY OF CHAR);
+  11 VAR i,j:INTEGER;
+  12 BEGIN
+  13         i:=0;
+  14         WHILE (arr[i]#0X) DO INC(i) END;
+  15         NEW(ptr,i+1);
+  16         FOR j:=0 TO i DO ptr^[j]:=arr[j] END;
+  17 END ArrayToPointer;
+  18 
+  19 
+  20 (*--------------------------Api-Procedures----------------------------*)
+  21 PROCEDURE CreateRegex*(str:ARRAY OF CHAR):Regex;
+  22 
+  23 VAR reg:Regex;regString:POINTER TO ARRAY OF CHAR;
+  24 BEGIN
+  25         regString:=NIL;
+  26         NEW(reg);
+  27         NEW(reg.regex);
+  28         ArrayToPointer(str,regString);
+  29         RegexParser.InitCreateRegex(regString,reg.regex);
+  30         RETURN reg
+  31 END CreateRegex;
+  32 
+  33 PROCEDURE CreateRegexPtr*(str:POINTER TO ARRAY OF CHAR):Regex;
+  34 VAR reg:Regex;
+  35 BEGIN
+  36         NEW(reg);
+  37         NEW(reg.regex);
+  38         RegexParser.InitCreateRegex(str,reg.regex);
+  39         RETURN reg
+  40 END CreateRegexPtr;
+  41 
+  42 PROCEDURE GetRegex*(sym:POINTER TO ARRAY OF CHAR):Regex;
+  43 VAR reg:Regex;
+  44 BEGIN
+  45         NEW(reg);
+  46         NEW(reg.regex);
+  47         RegexParser.InitCreateRegex(sym,reg.regex);
+  48         RETURN reg;
+  49 END GetRegex;
+  50 
+  51 PROCEDURE MatchRegex*(regex:ARRAY OF CHAR;target:ARRAY OF CHAR):BOOLEAN;
+  52 VAR result:BOOLEAN;
+  53         regString,tarString:POINTER TO ARRAY OF CHAR;
+  54         reg:Regex;
+  55         
+  56 BEGIN
+  57         regString:=NIL;tarString:=NIL;
+  58         ArrayToPointer(regex,regString);
+  59         ArrayToPointer(target,tarString);
+  60         NEW(reg);
+  61         NEW(reg.regex);
+  62         RegexParser.InitCreateRegex(regString,reg.regex);
+  63         result:=RegexMatching.Match(reg.regex,tarString);
+**** ------------------------------^ Identifier not known in qualified scope
+  64         RETURN result
+  65 END MatchRegex;
+  66 
+  67 PROCEDURE (reg:Regex) Match*(str:ARRAY OF CHAR):BOOLEAN,NEW;
+  68 VAR result:BOOLEAN;
+  69         tarString:POINTER TO ARRAY OF CHAR;
+  70         
+  71 BEGIN   
+  72         Console.WriteLn();
+  73         Console.WriteString ("Match " + str);
+  74         Console.WriteLn();
+  75         tarString:=NIL;
+  76         ArrayToPointer(str,tarString);
+  77         result:=RegexMatching.Match(reg.regex,tarString);
+**** ------------------------------^ Identifier not known in qualified scope
+  78         RETURN result;
+  79 END Match;
+  80 
+  81 PROCEDURE (reg:Regex) MatchPtr*(str:POINTER TO ARRAY OF CHAR):BOOLEAN,NEW;
+  82 BEGIN
+  83 RETURN RegexMatching.Match(reg.regex,str);
+**** ---------------------^ Identifier not known in qualified scope
+  84 END MatchPtr;
+  85 
+  86 END RegexApi.
+
+There were:  4 errors, and No warnings
+
+

@@ -1,0 +1,526 @@
+Listing:
+
+   1 MODULE RegexParser;
+   2 
+   3 (*IMPORT Interface_Strings,Interface_Out;*)
+   4 IMPORT Console, RTS;
+   5 
+   6 
+   7 
+   8 TYPE 
+   9         Regex*=POINTER TO RegexType;
+  10         RegexType*=EXTENSIBLE RECORD
+  11         lastPiece*:Piece;
+  12         last:Branch;
+  13         branch-:Branch;
+  14         Font*: POINTER TO FontDesc;
+  15 END;
+  16 
+  17 Branch*=POINTER TO RECORD
+  18         alt-:Branch;
+  19         piece-:Piece;
+  20 END;
+  21 
+  22 Piece*=POINTER TO RECORD
+  23         suc*:Piece;
+  24         atom-:Atom;
+  25         min-,max-:Quantifier;
+  26         (*matchProc-:MatchProc;*)
+  27         id-:INTEGER;
+  28 END;
+  29 
+  30 Atom*=POINTER TO RECORD
+  31         range-:Range;
+  32         regex-:Regex;
+  33 END;
+  34 
+  35 Range*=POINTER TO RECORD
+  36         pos-,sub-:BOOLEAN;
+  37         min-,max-:CHAR;
+  38         next-:Range
+  39 END;
+  40 
+  41 Quantifier*=POINTER TO RECORD
+  42         val-:INTEGER
+  43 END; 
+  44 
+  45 (* Font Description: 
+  46 1. Size:(e.g., 12 point vs. 16 point)
+  47 2. Style (e.g., plain vs. italic), 
+  48 3. Typeface (e.g., Times vs. Helvetica),
+  49 4. Weight (e.g., bold vs. normal),
+  50 5. Color (e.g., red ).
+  51 *)
+  52 
+  53 FontDesc* = RECORD
+  54         size*, style*, typeface*, weight*, color*: ARRAY OF CHAR;
+  55 END;
+  56 
+  57 CONST char=0;asterisk=1;plus=2;qum=3;bar=4;osquareBr=5;csquareBr=6;neg=7 (*^*);escape=8;lKlammer=9;rKlammer=10;glKlammer=11;grKlammer=12;strich=13;punkt=14; other=15;
+  58 
+  59 VAR     ok:BOOLEAN;
+  60                 regex:Regex;
+  61                 errString:ARRAY 128 OF CHAR;
+  62                 regString:POINTER TO ARRAY OF CHAR;
+  63                 sym:INTEGER;
+  64                 i:INTEGER;
+  65                 ch:CHAR;
+  66                 iden:CHAR;
+  67                 digits:ARRAY 32 OF CHAR;
+  68                 er:INTEGER;
+  69                 error:BOOLEAN;
+  70                 globalLast*:Piece;
+  71         
+  72 (*--------------------------------Fehler-Meldungen------------------------------------*)
+  73 PROCEDURE Error(id:INTEGER);
+  74 BEGIN
+  75         Console.WriteLn(); Console.WriteString(regString); Console.WriteLn();
+  76         er:=0;
+  77         FOR er:=0 TO i-1 DO errString[er]:=" " END;
+  78         errString[i]:="^";
+  79         errString[i+1]:=0X;
+  80         Console.WriteString(errString);
+  81         Console.WriteLn();
+  82         CASE id OF 
+  83                 1: Console.WriteString("Fehler. Erwartet: char oder \ oder . oder [ oder ( "); Console.WriteLn();
+  84         error:=TRUE;
+  85                 |2: Console.WriteString("Fehler. Keine gueltige Escape-Sequenz"); Console.WriteLn();
+  86                 error:=TRUE;
+  87                 |3: Console.WriteString("Fehler. Erwartet )");Console.WriteLn();
+  88                         error:=TRUE;
+  89                 |4: Console.WriteString("Fehler. Erwartet ]");Console.WriteLn();
+  90                         error:=TRUE;
+  91                 |5: Console.WriteString("Fehler. Keine gueltige CharGroup");Console.WriteLn();
+  92                 |6:Console.WriteString("Default. Noch keine Spezifikation");Console.WriteLn();
+  93                 error:=TRUE;
+  94         
+  95         END;
+  96 END Error;
+  97 (*ELSE Console.WriteLn(); Console.WriteString(regString); Console.WriteLn();
+  98                         
+  99                         
+ 100                         (*Create Error Mark*)
+ 101                         (* an error-Proc Fehlercode übergeben; anhand dessen die erwarteten
+ 102                                 syms evaluiert werden können *)
+ 103                         er:=0;
+ 104                         FOR er:=0 TO i-2 DO errString[er]:=" " END;
+ 105                         errString[i-2]:="^";
+ 106                         Console.WriteString(errString);
+ 107                         Console.WriteLn();
+ 108                         Console.WriteString("Fehler. Erwartet: char oder [ oder (");
+ 109                         Console.WriteLn();
+ 110                         Interface_Halt.halt.HaltPar(127)         *)
+ 111 
+ 112 (*-------------------------------Scanner-Procedures---------------------------------*)
+ 113 PROCEDURE Read();
+ 114 BEGIN
+ 115         ch:=regString^[i];INC(i);
+ 116 END Read;
+ 117 
+ 118 PROCEDURE GetSym();
+ 119 BEGIN
+ 120         CASE ch OF              
+ 121         CHR(1)..CHR(39),
+ 122         CHR(44),
+ 123         CHR(47)..CHR(62),
+ 124         CHR(64)..CHR(90), 
+ 125         CHR(94  )..CHR(122),
+ 126         CHR(126)..CHR(255):sym:=char;iden:=ch; Read(); (*alles au�er Metachar*)
+ 127         | "*":sym:=asterisk; Read();
+ 128         | "+":sym:=plus; Read();
+ 129         | "?":sym:=qum; Read();
+ 130         | "|":sym:=bar; Read();
+ 131         | "[":sym:=osquareBr; Read();
+ 132         | "]":sym:=csquareBr; Read();
+ 133         | "\":sym:=escape; Read();
+ 134         | "(":sym:=lKlammer; Read();
+ 135         | ")":sym:=rKlammer; Read();
+ 136         | "{":sym:=glKlammer; Read();
+ 137         | "}":sym:=grKlammer; Read();
+ 138         | "-":sym:=strich;Read();  (*auch nicht Metachar; Algorithmus ändern *)
+ 139         | ".":sym:=punkt;Read();
+ 140         ELSE sym:=other
+ 141         END
+ 142 END GetSym;
+ 143 
+ 144 (*-------------------------------Parsing-Procedures----------------------------------*)
+ 145 PROCEDURE MultiCharEsc (VAR range:Range);
+ 146 VAR new,last:Range;
+ 147 BEGIN
+ 148         CASE sym OF                     
+ 149         punkt:(*[^\n\r]*) range.pos:=FALSE; range.min:=0AX; range.max:=range.min;
+ 150                 NEW(new); new.min:=0DX; new.max:=new.min; range.next:=new;
+ 151         ELSE 
+ 152                         IF (iden="s") OR (iden="S") (* [#x20\t\n\r] *) THEN 
+ 153                                 IF iden="s" THEN range.pos:=TRUE END;
+ 154                                 range.min:=" "; range.max:=range.min;
+ 155                                 NEW(new); new.min:=09X; new.max:=new.min;
+ 156                                 range.next:=new; last:=range.next;
+ 157                                 NEW(new); new.min:=0AX; new.max:=new.min;
+ 158                                 last.next:=new; last:=new;
+ 159                                 NEW(new); new.min:=0DX; new.max:=new.min;
+ 160                                 last.next:=new;
+ 161                         ELSIF (iden="i") OR (iden="I") THEN
+ 162                                 IF iden="i" THEN range.pos:=TRUE END;
+ 163                                 range.min:=CHR(65);range.max:=CHR(90);
+ 164                                 NEW(new); new.min:=CHR(97); new.max:=CHR(122);
+ 165                                 range.next:=new; last:=range.next;
+ 166                                 NEW(new); new.min:=CHR(192); new.max:=CHR(214);
+ 167                                 last.next:=new; last:=new;
+ 168                                 NEW(new); new.min:=CHR(216); new.max:=CHR(246);
+ 169                                 last.next:=new; last:=new;
+ 170                                 NEW(new); new.min:=CHR(248); new.max:=CHR(255);
+ 171                                 last.next:=new; last:=new;
+ 172                                 NEW(new); new.min:="_"; new.max:=new.min;
+ 173                                 last.next:=new; last:=new;
+ 174                                 NEW(new); new.min:=":"; new.max:=new.min;
+ 175                                 last.next:=new; 
+ 176                         ELSIF (iden="c") OR (iden="C") THEN
+ 177                                 IF iden="c" THEN range.pos:=TRUE END;
+ 178                                 range.min:=CHR(65);range.max:=CHR(90);
+ 179                                 NEW(new); new.min:=CHR(97); new.max:=CHR(122);
+ 180                                 range.next:=new; last:=range.next;
+ 181                                 NEW(new); new.min:=CHR(192); new.max:=CHR(214);
+ 182                                 last.next:=new; last:=new;
+ 183                                 NEW(new); new.min:=CHR(216); new.max:=CHR(246);
+ 184                                 last.next:=new; last:=new;
+ 185                                 NEW(new); new.min:=CHR(248); new.max:=CHR(255);
+ 186                                 last.next:=new; last:=new;
+ 187                                 NEW(new); new.min:=CHR(48); new.max:=CHR(57);
+ 188                                 last.next:=new; last:=new;
+ 189                                 NEW(new); new.min:="."; new.max:=new.min;
+ 190                                 last.next:=new; last:=new;
+ 191                                 NEW(new); new.min:="-"; new.max:=new.min;
+ 192                                 last.next:=new; last:=new;
+ 193                                 NEW(new); new.min:="_"; new.max:=new.min;
+ 194                                 last.next:=new; last:=new;
+ 195                                 NEW(new); new.min:=":"; new.max:=new.min;
+ 196                                 last.next:=new; 
+ 197                         END;
+ 198         END;
+ 199 END MultiCharEsc;
+ 200 
+ 201 PROCEDURE SingleCharEsc (VAR char:CHAR); 
+ 202 BEGIN
+ 203         CASE sym OF
+ 204           escape: char:="\";
+ 205         | bar: char:="|";
+ 206         | strich: char:="-";
+ 207         | osquareBr: char:="[";
+ 208         | csquareBr: char:="]";
+ 209         | neg: char:="^";
+ 210         | lKlammer: char:="(";
+ 211         | rKlammer: char:=")";
+ 212         | glKlammer: char:="{";
+ 213         | grKlammer: char:="}";
+ 214         | punkt: char:=".";
+ 215         | plus: char:="+";
+ 216         | asterisk: char:="*";
+ 217         | qum: char:="?";
+ 218         ELSE 
+ 219                 IF iden="n" THEN char:=0AX; 
+ 220                 ELSIF iden="r" THEN char:=0DX;
+ 221                 ELSIF iden="t" THEN char:=09X;
+ 222                 ELSE (* Interface_Halt.halt.HaltPar(127); *) Error(2);
+ 223                  END;
+ 224         END;
+ 225         GetSym();
+ 226 END SingleCharEsc;
+ 227 
+ 228 PROCEDURE XmlCharRef(VAR cha:CHAR);
+ 229 VAR zahl,j,res:INTEGER;
+ 230 BEGIN
+ 231 IF (sym=char) & (iden="#") THEN GetSym();
+ 232         IF (sym=char) THEN 
+ 233                 IF iden="x" THEN
+ 234                 (*hex-format: noch nicht implementiert!*)
+ 235                 ELSIF (iden>="0") & (iden<="9") THEN
+ 236                         (*"chr"-Format *)
+ 237                         j:=0;
+ 238                         WHILE (iden>="0") & (iden<="9") & (sym=char) DO
+ 239                                 digits[j]:=iden; INC (j); GetSym()
+ 240                         END;
+ 241                         digits[j]:=0X;
+ 242                         (*zahl:=BaseStrings.strWrap.StringToInt(digits);*)
+ 243                         RTS.StrToInt(digits,zahl,ok);
+ 244                         IF zahl<=255 THEN  (*unterstützter Bereich*) 
+ 245                                 cha:=CHR(zahl); 
+ 246                         ELSE (*Interface_Halt.halt.HaltPar(127)*) Error(6);
+ 247                         END;
+ 248                 ELSE (*Interface_Halt.halt.HaltPar(127)*) Error(6);
+ 249                 END;
+ 250         ELSE (* Interface_Halt.halt.HaltPar (127) *) Error(6)
+ 251         END;
+ 252 ELSE (* Interface_Halt.halt.HaltPar (127)*) Error(6)
+ 253 END;
+ 254 IF ~error THEN
+ 255         IF (sym=char) & (iden=";") THEN GetSym();
+ 256         ELSE (*Interface_Halt.halt.HaltPar (127)*)Error(6);
+ 257         END;
+ 258 END
+ 259 END XmlCharRef;
+ 260 
+ 261 PROCEDURE quantifier(VAR pie:Piece);
+ 262 VAR quant:ARRAY 32 OF CHAR;
+ 263                         j:INTEGER;
+ 264                         res:INTEGER;
+ 265 BEGIN
+ 266         NEW (pie.min);
+ 267         IF sym=asterisk THEN pie.min.val:=0; 
+ 268         pie.id:=3;
+ 269         GetSym(); 
+ 270         ELSIF sym=plus THEN pie.min.val:=1; 
+ 271         pie.id:=3;
+ 272         GetSym();
+ 273         ELSIF sym=qum THEN pie.min.val:=0;
+ 274                 NEW(pie.max); pie.max.val:=1; 
+ 275                 pie.id:=1;
+ 276                 GetSym();
+ 277         ELSIF sym=glKlammer THEN GetSym();
+ 278                 j:=0;
+ 279                 WHILE (iden>="0") & (iden<="9") & (sym=char) DO
+ 280                         digits[j]:=iden; INC (j); GetSym()
+ 281                 END;
+ 282                 IF sym=grKlammer THEN (*quantExact*)
+ 283                         (*pie.min.val:=BaseStrings.strWrap.StringToInt(digits);*)
+ 284                         RTS.StrToInt(digits,pie.min.val,ok);
+ 285                         
+ 286                         NEW(pie.max); pie.max.val:=pie.min.val; 
+ 287                 (*      pie.matchProc:=MatchProcQuantified;*)
+ 288                         pie.id:=2;
+ 289                         GetSym();
+ 290                 ELSIF iden="," THEN
+ 291                         (*pie.min.val:=BaseStrings.strWrap.StringToInt(digits);*)
+ 292                         RTS.StrToInt(digits,pie.min.val,ok);
+ 293                         (* GPCP RTS.StrToInt*(IN s : ARRAY OF CHAR;OUT i : INTEGER;OUT ok : BOOLEAN);*)
+ 294                         GetSym();
+ 295                         IF sym=grKlammer THEN 
+ 296                         pie.id:=3;
+ 297                         GetSym();
+ 298                         ELSE
+ 299                                 j:=0;
+ 300                                 WHILE (iden>="0") & (iden<="9") & (sym=char)  DO
+ 301                                         digits[j]:=iden; INC (j); GetSym()
+ 302                                 END;
+ 303                                 IF sym=grKlammer THEN (*quantExact*)
+ 304                                         NEW(pie.max);                                                                           
+ 305                                         (*pie.max.val:=BaseStrings.strWrap.StringToInt(digits);*)
+ 306                                         RTS.StrToInt(digits,pie.max.val,ok);
+ 307                                         (* GPCP RTS.StrToInt*(IN s : ARRAY OF CHAR;OUT i : INTEGER;OUT ok : BOOLEAN);*)
+ 308                                         pie.id:=2; 
+ 309                                         GetSym();
+ 310                                 ELSE (*Interface_Halt.halt.HaltPar(127);*) Error(6);
+ 311                                 END;
+ 312                         END;
+ 313                 ELSE (*Interface_Halt.halt.HaltPar(127)*) Error(6);
+ 314                 END;
+ 315         ELSE pie.min.val:=1; NEW(pie.max); pie.max.val:=1; pie.id:=2;
+ 316         END;
+ 317         IF ~error THEN
+ 318                 (*quantValid?*)
+ 319                 IF  ~(pie.max=NIL)  & ~(pie.min.val<=pie.max.val)   THEN
+ 320                         (*Interface_Halt.halt.HaltPar(127);*) Error(6) END;
+ 321         END             
+ 322 END quantifier;
+ 323 
+ 324 PROCEDURE^ charClassExpr (VAR ran:Range);
+ 325 PROCEDURE^ posCharGroup(VAR range:Range);
+ 326 PROCEDURE^ charClassSub(VAR range:Range);
+ 327 
+ 328 PROCEDURE charGroup (VAR range:Range);
+ 329 BEGIN (*charGroup*)
+ 330         IF (*sym=neg*) iden="^" THEN range.pos:=FALSE; GetSym(); 
+ 331         ELSE range.pos:=TRUE END;
+ 332         posCharGroup(range);
+ 333 END charGroup;
+ 334 
+ 335 PROCEDURE charClassSub(VAR range:Range);
+ 336 BEGIN (*charClassSub*)
+ 337         GetSym(); (*osquareBr*)
+ 338         GetSym();NEW(range.next); range.next.sub:=TRUE;
+ 339         charClassExpr(range.next);
+ 340 END charClassSub;
+ 341                         
+ 342 PROCEDURE posCharGroup(VAR range:Range);
+ 343 BEGIN (*posCharGroup*)
+ 344         IF iden="&" THEN GetSym(); XmlCharRef(range.min);
+ 345                 IF ~error THEN
+ 346                         range.max:=range.min;
+ 347                 END
+ 348         ELSIF (sym=char) OR (sym=escape) THEN                                           (*OR escape*)
+ 349                 IF sym=char THEN range.min:=iden; GetSym();
+ 350                 ELSE GetSym(); SingleCharEsc(range.min);
+ 351                 END;
+ 352                 IF ~error THEN
+ 353                         IF (sym=char) OR (sym=escape) THEN                                      (* OR escape*)
+ 354                         range.max:=range.min;
+ 355                         ELSIF sym=strich THEN GetSym();
+ 356                                 IF (sym=char) OR (sym=escape) THEN                              (*OR  escape*)
+ 357                                         IF sym=char THEN range.max:=iden; GetSym();
+ 358                                         ELSE GetSym(); SingleCharEsc(range.max);
+ 359                                         END;
+ 360                                 ELSIF sym=osquareBr THEN range.max:=range.min; GetSym(); 
+ 361                                         NEW(range.next);range.next.sub:=TRUE; charClassExpr(range.next);
+ 362                                 ELSE (* Interface_Halt.halt.HaltPar(127)*) Error(6);
+ 363                                 END;
+ 364                         ELSIF sym=csquareBr THEN 
+ 365                                 range.max:=range.min;
+ 366                         ELSE (* Interface_Halt.halt.HaltPar(127); *) Error(5);
+ 367                         END;
+ 368                 END;
+ 369         ELSE (* Interface_Halt.halt.HaltPar (127); *) Error(5);
+ 370         END;
+ 371                 
+ 372         (*validRange?*)
+ 373         IF ~error THEN
+ 374                 IF ~(range.min<=range.max) THEN (* Interface_Halt.halt.HaltPar(127)*)Error(6) END;
+ 375                 IF ~error THEN  
+ 376                         IF sym=strich THEN charClassSub (range) END;
+ 377                 END;
+ 378         END
+ 379         END posCharGroup;
+ 380 
+ 381 PROCEDURE charClassExpr (VAR ran:Range);
+ 382 VAR new,last:Range; 
+ 383 BEGIN (*charClassExpr*)
+ 384         charGroup(ran);
+ 385         IF ~error THEN
+ 386                 last:=ran;
+ 387                 WHILE (~error) & (sym=char) DO 
+ 388                         NEW(new); posCharGroup (new); 
+ 389                         IF ~error THEN
+ 390                                 last.next:=new;
+ 391                                 last:=new;
+ 392                         END
+ 393                         END;
+ 394                 IF ~error THEN
+ 395                         IF sym=csquareBr THEN GetSym();
+ 396                         ELSE (* Interface_Halt.halt.HaltPar(127); *) Error(4);
+ 397                         END;
+ 398                 END
+ 399         END;
+ 400 END charClassExpr;
+ 401 
+ 402 PROCEDURE (reg:Regex) regExp(),NEW;
+ 403 VAR last,new:Branch;
+ 404 
+ 405         PROCEDURE branch(VAR bra:Branch);
+ 406         VAR last:Piece;
+ 407                         new:Piece;
+ 408         
+ 409                 PROCEDURE piece(VAR pie:Piece);
+ 410                 
+ 411                         PROCEDURE atom(VAR pie:Piece);
+ 412                         VAR ato:Atom;
+ 413                                         ran:Range;
+ 414                         
+ 415                         BEGIN (*atom*)
+ 416                         NEW(pie.atom); ato:=pie.atom;
+ 417                         
+ 418                         
+ 419                         IF sym=char THEN
+ 420                                 NEW(ato.range); ran:=ato.range;
+ 421                                 ran.min:=iden; ran.max:=ran.min;ran.pos:=TRUE;
+ 422                                 GetSym();
+ 423                                 
+ 424                            ELSIF sym=escape THEN
+ 425                                 NEW(ato.range); ran:=ato.range;ran.pos:=TRUE;
+ 426                                 GetSym();
+ 427                                 MultiCharEsc(ran);
+ 428                                 IF ran.min=0X THEN
+ 429                                         SingleCharEsc(ran.min);
+ 430                                         IF ~error THEN
+ 431                                                 ran.max:=ran.min;
+ 432                                         END
+ 433                                 ELSE iden:=0X;GetSym();
+ 434                                 END;
+ 435                                 
+ 436                         ELSIF sym=punkt THEN
+ 437                                 NEW(ato.range); ran:=ato.range;
+ 438                                 MultiCharEsc(ran);
+ 439                                 GetSym();
+ 440                                 
+ 441                         ELSIF sym=osquareBr THEN
+ 442                                 GetSym();
+ 443                                 NEW(ato.range); ran:=ato.range;
+ 444                                 charClassExpr(ran);
+ 445                                 
+ 446                         ELSIF sym=lKlammer THEN GetSym();
+ 447                                 NEW(ato.regex); ato.regex.regExp();
+ 448                                 IF ~error THEN
+ 449                                         IF sym=rKlammer THEN GetSym();
+ 450                                         ELSE (* Interface_Halt.halt.HaltPar(127) *) Error(3);
+ 451                                         END;
+ 452                                 END
+ 453                                 
+ 454                         ELSE (* Interface_Halt.halt.HaltPar(127) *) Error(1); 
+ 455                         END;
+ 456                         END atom;
+ 457                 
+ 458                 BEGIN (*piece*)
+ 459                         atom(pie);
+ 460                         IF ~error THEN   
+ 461                                 quantifier(pie);  
+ 462                         END;
+ 463                 END piece;
+ 464                 
+ 465         BEGIN (*branch*)
+ 466         NEW (bra.piece); piece(bra.piece); (*first*)
+ 467                 last:=bra.piece;
+ 468         IF ~error THEN   
+ 469                 WHILE (~error) & ((sym=char) OR (sym=osquareBr) OR (sym=lKlammer) OR (sym=escape) OR (sym=punkt)) DO
+ 470                         NEW (new); piece(new);
+ 471                         IF ~error THEN
+ 472                                 last.suc:=new;
+ 473                                 last:=new;
+ 474                         END
+ 475                 END;
+ 476         globalLast:=last;
+ 477         END;
+ 478         END branch;
+ 479         
+ 480 BEGIN (*regExp*)
+ 481 NEW(reg.branch); branch(reg.branch); (*first*)
+ 482 reg.last:=reg.branch; (*q*)
+ 483 IF ~error THEN   
+ 484 WHILE (~error) & (sym=bar) DO 
+ 485         GetSym();
+ 486         NEW(new); branch(new);
+ 487         IF ~error THEN
+ 488                 reg.last.alt:=new;
+ 489                 reg.last:=new;
+ 490         END;
+ 491 END;
+ 492 END;
+ 493 END regExp;
+ 494 
+ 495 PROCEDURE InitCreateRegex*(str:POINTER TO ARRAY OF CHAR;VAR reg:Regex);
+ 496 VAR termPiece:Piece; quant:Quantifier;
+ 497 BEGIN
+ 498         error:=FALSE;
+ 499         regString:=str;i:=0;Read();GetSym();
+ 500         reg.regExp();
+ 501         (*Hier an RegExpr. noch ein piece.range.min:=0X haengen*)
+ 502         NEW(termPiece);
+ 503         NEW(termPiece.atom);
+ 504         NEW(termPiece.atom.range);
+ 505         termPiece.atom.range.min:=0X;termPiece.atom.range.max:=0X;
+ 506         termPiece.atom.range.pos:=TRUE;
+ 507         NEW(quant);quant.val:=1;
+ 508         NEW(termPiece.min);
+ 509         termPiece.min:=quant;
+ 510         NEW(termPiece.max);
+ 511         termPiece.max:=quant;
+ 512         termPiece.id:=2;
+ 513         globalLast.suc:=termPiece;
+ 514         reg.lastPiece:=globalLast;
+ 515         reg.Font=NIL;
+**** ----------------^ error in IdentStatement
+ 516 END InitCreateRegex;
+ 517 
+ 518 
+ 519 END RegexParser.
+
+There were:  1 error, and No warnings
+
+
