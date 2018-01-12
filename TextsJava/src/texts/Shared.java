@@ -97,10 +97,11 @@ public class Shared {
 		}
 		available=false;
 		//
-		
+		//***************************interface draft
 		RichChar ch= new RichChar();
 		ch.ch= this.sharedText.getTextCharAtPos(this.sharedText.getParsePos());
 		this.sharedText.incParsePos();
+		//***************************end interface draft
 		// sharedText.text[sharedText.getTextPos()];
 		//this.sharedText.incTextPos();
 		System.out.println("getSym rch: "+ch.ch);
