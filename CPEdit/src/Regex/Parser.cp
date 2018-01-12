@@ -1,7 +1,7 @@
 MODULE RegexParser;
 
 
-IMPORT Console, RTS;
+IMPORT Console, RTS,FontsFont;
 
 
 
@@ -11,7 +11,7 @@ TYPE
 		lastPiece*:Piece;
 		last:Branch;
 		branch-:Branch;
-		Font*: FontDesc;
+		Font*: FontsFont.FontDesc;
 END;
 
 Branch*=POINTER TO RECORD
@@ -42,17 +42,6 @@ Quantifier*=POINTER TO RECORD
 	val-:INTEGER
 END; 
 
-(* Font Description: 
-1. Size:(e.g., 12 point vs. 16 point)
-2. Style (e.g., plain vs. italic), 
-3. Typeface (e.g., Times vs. Helvetica),
-4. Weight (e.g., bold vs. normal),
-5. Color (e.g., red ).
-*)
-
-FontDesc* = POINTER TO RECORD
-	size*, style*, typeface*, weight*, color*: POINTER TO ARRAY OF CHAR;
-END;
 
 CONST char=0;asterisk=1;plus=2;qum=3;bar=4;osquareBr=5;csquareBr=6;neg=7 (*^*);escape=8;lKlammer=9;rKlammer=10;glKlammer=11;grKlammer=12;strich=13;punkt=14; other=15;
 

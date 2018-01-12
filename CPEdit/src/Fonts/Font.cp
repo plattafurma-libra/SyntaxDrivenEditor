@@ -1,6 +1,57 @@
 MODULE FontsFont;
 
+IMPORT texts;
 
+(* Font Description: 
+1. Size:(e.g., 12 point vs. 16 point)
+2. Style (e.g., plain vs. italic), 
+3. Typeface (e.g., Times vs. Helvetica),
+4. Weight (e.g., bold vs. normal),
+5. Color (e.g., red ).
+*) 
+
+TYPE FontDesc* = POINTER TO RECORD
+	size*, style*, typeface*, weight*, color*: POINTER TO ARRAY OF CHAR;
+END;
+
+PROCEDURE Size*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF Font.size = NIL THEN RETURN TRUE
+	ELSE RETURN rch.size(Font.size^);
+	END; 
+END Size;
+
+PROCEDURE Style*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF Font.style = NIL THEN RETURN TRUE
+	ELSE RETURN rch.style(Font.style^);
+	END; 
+END Style;
+
+PROCEDURE Typeface*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF Font.typeface = NIL THEN RETURN TRUE
+	ELSE RETURN rch.typeface(Font.typeface^);
+	END; 
+END Typeface;
+
+PROCEDURE Weight*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF Font.weight = NIL THEN RETURN TRUE
+	ELSE RETURN rch.weight(Font.weight^);
+	END; 
+END Weight;
+
+PROCEDURE Color*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+BEGIN
+	IF Font.color = NIL THEN RETURN TRUE
+	ELSE RETURN rch.color(Font.color^);
+	END; 
+END Color;
+
+
+(*************************************************************************
+Example token from Wirth; no longer used here 
 (* JR MODULE Fonts;*) (*JG 18.11.90; PDR 8.6.12; NW 25.3.2013*)
   
   (*JR IMPORT SYSTEM, Files;*)
@@ -25,7 +76,7 @@ MODULE FontsFont;
 
 VAR Default*, root*: Font;
 
-(* JR **********************************************************************************************************
+
 PROCEDURE GetPat*(fnt: Font; ch: CHAR; VAR dx, x, y, w, h, patadr: INTEGER);
   VAR pa: INTEGER;  dxb, xb, yb, wb, hb: BYTE;
 BEGIN pa := fnt.T[ORD(ch) MOD 80H]; patadr := pa;
@@ -117,6 +168,11 @@ BEGIN f := root.next;
   f.next := NIL
 END Free;
 
-*******JR**************************************************************************************************************)
+
 BEGIN root := NIL; (* JR Default := This("Oberon10.Scn.Fnt")*)
+
+End of unsused example token from Wirth 
+*************************************************************************)
+
+BEGIN
 END FontsFont.

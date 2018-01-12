@@ -1,6 +1,6 @@
 MODULE RegexMatching;
 
-IMPORT RegexParser, texts, Console;
+IMPORT RegexParser,FontsFont, texts, Console;
 
 TYPE Regex=POINTER TO EXTENSIBLE RECORD (RegexParser.RegexType) END;
 
@@ -85,49 +85,53 @@ BEGIN
 END MatchRange; 
 
 
-PROCEDURE MatchChar(Ptr:POINTER TO ARRAY OF CHAR;rch:texts.RichChar):BOOLEAN;
+(********************************
+PROCEDURE DummyMatchChar(Ptr:POINTER TO ARRAY OF CHAR;rch:texts.RichChar):BOOLEAN;
 
 BEGIN
-	(* TO DO *)
+	(* DummyMatchChar must be replaced on call (see Size(...), Style(....))by a 
+	boolean procedure with access to decoration feature of rich char 
+	(or block in draft.js)
+	 *)
 	RETURN TRUE;
 
-END MatchChar;
+END DummyMatchChar;
 
 PROCEDURE Size(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
 BEGIN
 	IF regex.Font.size = NIL THEN RETURN TRUE
-	ELSE RETURN MatchChar(regex.Font.size,rch);
+	ELSE RETURN DummyMatchChar(regex.Font.size,rch);
 	END; 
 END Size;
 
 PROCEDURE Style(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
 BEGIN
 	IF regex.Font.style = NIL THEN RETURN TRUE
-	ELSE RETURN MatchChar(regex.Font.style,rch);
+	ELSE RETURN DummyMatchChar(regex.Font.style,rch);
 	END; 
 END Style;
 
 PROCEDURE Typeface(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
 BEGIN
 	IF regex.Font.typeface = NIL THEN RETURN TRUE
-	ELSE RETURN MatchChar(regex.Font.typeface,rch);
+	ELSE RETURN DummyMatchChar(regex.Font.typeface,rch);
 	END; 
 END Typeface;
 
 PROCEDURE Weight(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
 BEGIN
 	IF regex.Font.weight = NIL THEN RETURN TRUE
-	ELSE RETURN MatchChar(regex.Font.weight,rch);
+	ELSE RETURN DummyMatchChar(regex.Font.weight,rch);
 	END; 
 END Weight;
 
 PROCEDURE Color(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
 BEGIN
 	IF regex.Font.color = NIL THEN RETURN TRUE
-	ELSE RETURN MatchChar(regex.Font.color,rch);
+	ELSE RETURN DummyMatchChar(regex.Font.color,rch);
 	END; 
 END Color;
-
+************************************************)
 
 PROCEDURE FontMatch(rch:texts.RichChar; regex:RegexParser.Regex):INTEGER;
 
@@ -135,8 +139,9 @@ PROCEDURE FontMatch(rch:texts.RichChar; regex:RegexParser.Regex):INTEGER;
 
 BEGIN
 	IF regex.Font=NIL THEN RETURN 1 
-	ELSIF Size(regex,rch) & Style(regex,rch) & Typeface(regex,rch) &  
-		Weight(regex,rch) & Color(regex,rch) THEN
+	ELSIF FontsFont.Size(regex.Font,rch) & FontsFont.Style(regex.Font,rch) & 
+		FontsFont.Typeface(regex.Font,rch) &  
+		FontsFont.Weight(regex.Font,rch) & FontsFont.Color(regex.Font,rch) THEN
 		RETURN 1 
 	ELSE RETURN -1
 	END;

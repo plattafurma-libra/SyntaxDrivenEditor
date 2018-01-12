@@ -2,128 +2,196 @@ Listing:
 
    1 MODULE FontsFont;
    2 
-   3 
-   4 (* JR MODULE Fonts;*) (*JG 18.11.90; PDR 8.6.12; NW 25.3.2013*)
-   5   
-   6   (*JR IMPORT SYSTEM, Files;*)
-   7 
-   8   CONST FontFileId = 0DBH;
-   9 
-  10   TYPE Font* = POINTER TO EXTENSIBLE RECORD 
-  11     
-  12     (*FontDesc* = RECORD*)
-  13       name*: ARRAY 32 OF CHAR;
-  14       height*, minX*, maxX*, minY*, maxY*: INTEGER;
-  15       next*: Font;
-  16       T: ARRAY 128 OF INTEGER;
-  17       raster: ARRAY 2360 OF BYTE
-  18     END ;
+   3 IMPORT texts;
+   4 
+   5 (* Font Description: 
+   6 1. Size:(e.g., 12 point vs. 16 point)
+   7 2. Style (e.g., plain vs. italic), 
+   8 3. Typeface (e.g., Times vs. Helvetica),
+   9 4. Weight (e.g., bold vs. normal),
+  10 5. Color (e.g., red ).
+  11 *) 
+  12 
+  13 TYPE FontDesc* = POINTER TO RECORD
+  14         size*, style*, typeface*, weight*, color*: POINTER TO ARRAY OF CHAR;
+  15 END;
+  16 
+  17 
+  18 PROCEDURE DummyMatchChar(Ptr:POINTER TO ARRAY OF CHAR;rch:texts.RichChar):BOOLEAN;
+**** ----------^ Warning: This procedure is not exported, called or assigned
   19 
-  20     LargeFont = POINTER TO RECORD (Font) ext: ARRAY 2560 OF BYTE END ;
-  21     (* JR LargeFont = POINTER TO LargeFontDesc;*)
-  22 
-  23   (* raster sizes: Syntax8 1367, Syntax10 1628, Syntax12 1688, Syntax14 1843, Syntax14b 1983,
-  24       Syntax16 2271, Syntax20 3034, Syntac24 4274, Syntax24b 4302  *)
-  25 
-  26 VAR Default*, root*: Font;
-  27 
-  28 (* JR **********************************************************************************************************
-  29 PROCEDURE GetPat*(fnt: Font; ch: CHAR; VAR dx, x, y, w, h, patadr: INTEGER);
-  30   VAR pa: INTEGER;  dxb, xb, yb, wb, hb: BYTE;
-  31 BEGIN pa := fnt.T[ORD(ch) MOD 80H]; patadr := pa;
-  32   SYSTEM.GET(pa-3, dxb); SYSTEM.GET(pa-2, xb); SYSTEM.GET(pa-1, yb); SYSTEM.GET(pa, wb); SYSTEM.GET(pa+1, hb);
-  33   dx := dxb; x := xb; y := yb; w := wb; h := hb;
-  34   IF yb < 128 THEN y := yb ELSE y := yb - 256 END
-  35 END GetPat;
-  36 
-  37 PROCEDURE This*(name: ARRAY OF CHAR): Font;
-  38 
-  39   TYPE RunRec = RECORD beg, end: BYTE END ;
-  40     BoxRec = RECORD dx, x, y, w, h: BYTE END ;
-  41     
-  42   VAR F: Font; LF: LargeFont;
-  43     f: Files.File; R: Files.Rider;
-  44     NofRuns, NofBoxes: BYTE;
-  45     NofBytes: INTEGER;
-  46     height, minX, maxX, minY, maxY: BYTE;
-  47     i, j, k, m, n: INTEGER;
-  48     a, a0: INTEGER;
-  49     b, beg, end: BYTE;
-  50     run: ARRAY 16 OF RunRec;
-  51     box: ARRAY 512 OF BoxRec;
-  52 
-  53   PROCEDURE RdInt16(VAR R: Files.Rider; VAR b0: BYTE);
-  54     VAR b1: BYTE;
-  55   BEGIN Files.ReadByte(R, b0); Files.ReadByte(R, b1)
-  56   END RdInt16;
-  57 
-  58 BEGIN F := root;
-  59   WHILE (F # NIL) & (name # F.name) DO F := F.next END;
-  60   IF F = NIL THEN
-  61     f := Files.Old(name);
-  62     IF f # NIL THEN
-  63       Files.Set(R, f, 0); Files.ReadByte(R, b);
-  64       IF b = FontFileId THEN
-  65         Files.ReadByte(R, b); (*abstraction*)
-  66         Files.ReadByte(R, b); (*family*)
-  67         Files.ReadByte(R, b); (*variant*)
-  68         NEW(F); F.name := name;
-  69         RdInt16(R, height); RdInt16(R, minX); RdInt16(R, maxX); RdInt16(R, minY); RdInt16(R, maxY); RdInt16(R, NofRuns);
-  70         NofBoxes := 0; k := 0;
-  71         WHILE k # NofRuns DO
-  72           RdInt16(R, beg);
-  73           run[k].beg := beg; RdInt16(R, end);
-  74           run[k].end := end; NofBoxes := NofBoxes + end - beg; INC(k)
-  75         END;
-  76         NofBytes := 5; j := 0;
-  77         WHILE j # NofBoxes DO
-  78           RdInt16(R, box[j].dx); RdInt16(R, box[j].x); RdInt16(R, box[j].y);
-  79           RdInt16(R, box[j].w); RdInt16(R, box[j].h);
-  80           NofBytes := NofBytes + 5 + (box[j].w + 7) DIV 8 * box[j].h;
-  81           INC(j)
-  82         END;
-  83         IF NofBytes < 2300 THEN NEW(F) ELSE NEW(LF); F := LF END ;
-  84         F.name := name;
-  85         F.height := height; F.minX := minX; F.maxX := maxX; F.maxY := maxY;
-  86         IF minY >= 80H THEN F.minY := minY - 100H ELSE F.minY := minY END ;
-  87         a0 := SYSTEM.ADR(F.raster);
-  88         SYSTEM.PUT(a0, 0X); SYSTEM.PUT(a0+1, 0X); SYSTEM.PUT(a0+2, 0X); SYSTEM.PUT(a0+3, 0X); SYSTEM.PUT(a0+4, 0X);
-  89         (*null pattern for characters not in a run*)
-  90         INC(a0, 2); a := a0+3; j := 0; k := 0; m := 0;
-  91         WHILE k < NofRuns DO
-  92           WHILE (m < run[k].beg) & (m < 128) DO F.T[m] := a0; INC(m) END;
-  93           WHILE (m < run[k].end) & (m < 128) DO
-  94             F.T[m] := a+3;
-  95             SYSTEM.PUT(a, box[j].dx); SYSTEM.PUT(a+1, box[j].x); SYSTEM.PUT(a+2, box[j].y);
-  96             SYSTEM.PUT(a+3, box[j].w); SYSTEM.PUT(a+4, box[j].h); INC(a, 5);
-  97             n := (box[j].w + 7) DIV 8 * box[j].h;
-  98             WHILE n # 0 DO DEC(n); Files.ReadByte(R, b); SYSTEM.PUT(a, b); INC(a) END ;
-  99             INC(j); INC(m)
- 100           END;
- 101           INC(k)
- 102         END;
- 103         WHILE m < 128 DO F.T[m] := a0; INC(m) END ;
- 104         F.next := root; root := F
- 105       ELSE (*bad file id*) F := Default
- 106       END
- 107     ELSE (*font file not available*) F := Default
- 108     END
- 109   END;
- 110   RETURN F
- 111 END This;
- 112 
- 113 PROCEDURE Free*;  (*remove all but first two from font list*)
- 114   VAR f: Font;
- 115 BEGIN f := root.next;
- 116   IF f # NIL THEN f := f.next END ;
- 117   f.next := NIL
- 118 END Free;
- 119 
- 120 *******JR**************************************************************************************************************)
- 121 BEGIN root := NIL; Default := This("Oberon10.Scn.Fnt")
-**** ------------------------------^ Identifier not known in this scope
- 122 END FontsFont.
+  20 BEGIN
+  21         (* DummyMatchChar must be replaced on call (see Size(...), Style(....))by a 
+  22         boolean procedure with access to decoration feature of rich char 
+  23         (or block in draft.js)
+  24          *)
+  25         RETURN TRUE;
+  26 
+  27 END DummyMatchChar;
+  28 
+  29 PROCEDURE Size*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+  30 BEGIN
+  31         IF Font.size = NIL THEN RETURN TRUE
+  32         ELSE RETURN rch.size(Font.size^);
+  33         END; 
+  34 END Size;
+  35 
+  36 PROCEDURE Style*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+  37 BEGIN
+  38         IF Font.style = NIL THEN RETURN TRUE
+  39         ELSE RETURN rch.style(Font.style^);
+  40         END; 
+  41 END Style;
+  42 
+  43 PROCEDURE Typeface*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+  44 BEGIN
+  45         IF Font.typeface = NIL THEN RETURN TRUE
+  46         ELSE RETURN rch.typeface(Font.typeface^);
+  47         END; 
+  48 END Typeface;
+  49 
+  50 PROCEDURE Weight*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+  51 BEGIN
+  52         IF Font.weight = NIL THEN RETURN TRUE
+  53         ELSE RETURN rch.weight(Font.weight^);
+  54         END; 
+  55 END Weight;
+  56 
+  57 PROCEDURE Color*(Font:FontDesc; rch:texts.RichChar):BOOLEAN;
+  58 BEGIN
+  59         IF Font.color = NIL THEN RETURN TRUE
+  60         ELSE RETURN rch.color(Font.color^);
+  61         END; 
+  62 END Color;
+  63 
+  64 
+  65 (*************************************************************************
+  66 Example token from Wirth; no longer used here 
+  67 (* JR MODULE Fonts;*) (*JG 18.11.90; PDR 8.6.12; NW 25.3.2013*)
+  68   
+  69   (*JR IMPORT SYSTEM, Files;*)
+  70 
+  71   CONST FontFileId = 0DBH;
+  72 
+  73   TYPE Font* = POINTER TO EXTENSIBLE RECORD 
+  74     
+  75     (*FontDesc* = RECORD*)
+  76       name*: ARRAY 32 OF CHAR;
+  77       height*, minX*, maxX*, minY*, maxY*: INTEGER;
+  78       next*: Font;
+  79       T: ARRAY 128 OF INTEGER;
+  80       raster: ARRAY 2360 OF BYTE
+  81     END ;
+  82 
+  83     LargeFont = POINTER TO RECORD (Font) ext: ARRAY 2560 OF BYTE END ;
+  84     (* JR LargeFont = POINTER TO LargeFontDesc;*)
+  85 
+  86   (* raster sizes: Syntax8 1367, Syntax10 1628, Syntax12 1688, Syntax14 1843, Syntax14b 1983,
+  87       Syntax16 2271, Syntax20 3034, Syntac24 4274, Syntax24b 4302  *)
+  88 
+  89 VAR Default*, root*: Font;
+  90 
+  91 
+  92 PROCEDURE GetPat*(fnt: Font; ch: CHAR; VAR dx, x, y, w, h, patadr: INTEGER);
+  93   VAR pa: INTEGER;  dxb, xb, yb, wb, hb: BYTE;
+  94 BEGIN pa := fnt.T[ORD(ch) MOD 80H]; patadr := pa;
+  95   SYSTEM.GET(pa-3, dxb); SYSTEM.GET(pa-2, xb); SYSTEM.GET(pa-1, yb); SYSTEM.GET(pa, wb); SYSTEM.GET(pa+1, hb);
+  96   dx := dxb; x := xb; y := yb; w := wb; h := hb;
+  97   IF yb < 128 THEN y := yb ELSE y := yb - 256 END
+  98 END GetPat;
+  99 
+ 100 PROCEDURE This*(name: ARRAY OF CHAR): Font;
+ 101 
+ 102   TYPE RunRec = RECORD beg, end: BYTE END ;
+ 103     BoxRec = RECORD dx, x, y, w, h: BYTE END ;
+ 104     
+ 105   VAR F: Font; LF: LargeFont;
+ 106     f: Files.File; R: Files.Rider;
+ 107     NofRuns, NofBoxes: BYTE;
+ 108     NofBytes: INTEGER;
+ 109     height, minX, maxX, minY, maxY: BYTE;
+ 110     i, j, k, m, n: INTEGER;
+ 111     a, a0: INTEGER;
+ 112     b, beg, end: BYTE;
+ 113     run: ARRAY 16 OF RunRec;
+ 114     box: ARRAY 512 OF BoxRec;
+ 115 
+ 116   PROCEDURE RdInt16(VAR R: Files.Rider; VAR b0: BYTE);
+ 117     VAR b1: BYTE;
+ 118   BEGIN Files.ReadByte(R, b0); Files.ReadByte(R, b1)
+ 119   END RdInt16;
+ 120 
+ 121 BEGIN F := root;
+ 122   WHILE (F # NIL) & (name # F.name) DO F := F.next END;
+ 123   IF F = NIL THEN
+ 124     f := Files.Old(name);
+ 125     IF f # NIL THEN
+ 126       Files.Set(R, f, 0); Files.ReadByte(R, b);
+ 127       IF b = FontFileId THEN
+ 128         Files.ReadByte(R, b); (*abstraction*)
+ 129         Files.ReadByte(R, b); (*family*)
+ 130         Files.ReadByte(R, b); (*variant*)
+ 131         NEW(F); F.name := name;
+ 132         RdInt16(R, height); RdInt16(R, minX); RdInt16(R, maxX); RdInt16(R, minY); RdInt16(R, maxY); RdInt16(R, NofRuns);
+ 133         NofBoxes := 0; k := 0;
+ 134         WHILE k # NofRuns DO
+ 135           RdInt16(R, beg);
+ 136           run[k].beg := beg; RdInt16(R, end);
+ 137           run[k].end := end; NofBoxes := NofBoxes + end - beg; INC(k)
+ 138         END;
+ 139         NofBytes := 5; j := 0;
+ 140         WHILE j # NofBoxes DO
+ 141           RdInt16(R, box[j].dx); RdInt16(R, box[j].x); RdInt16(R, box[j].y);
+ 142           RdInt16(R, box[j].w); RdInt16(R, box[j].h);
+ 143           NofBytes := NofBytes + 5 + (box[j].w + 7) DIV 8 * box[j].h;
+ 144           INC(j)
+ 145         END;
+ 146         IF NofBytes < 2300 THEN NEW(F) ELSE NEW(LF); F := LF END ;
+ 147         F.name := name;
+ 148         F.height := height; F.minX := minX; F.maxX := maxX; F.maxY := maxY;
+ 149         IF minY >= 80H THEN F.minY := minY - 100H ELSE F.minY := minY END ;
+ 150         a0 := SYSTEM.ADR(F.raster);
+ 151         SYSTEM.PUT(a0, 0X); SYSTEM.PUT(a0+1, 0X); SYSTEM.PUT(a0+2, 0X); SYSTEM.PUT(a0+3, 0X); SYSTEM.PUT(a0+4, 0X);
+ 152         (*null pattern for characters not in a run*)
+ 153         INC(a0, 2); a := a0+3; j := 0; k := 0; m := 0;
+ 154         WHILE k < NofRuns DO
+ 155           WHILE (m < run[k].beg) & (m < 128) DO F.T[m] := a0; INC(m) END;
+ 156           WHILE (m < run[k].end) & (m < 128) DO
+ 157             F.T[m] := a+3;
+ 158             SYSTEM.PUT(a, box[j].dx); SYSTEM.PUT(a+1, box[j].x); SYSTEM.PUT(a+2, box[j].y);
+ 159             SYSTEM.PUT(a+3, box[j].w); SYSTEM.PUT(a+4, box[j].h); INC(a, 5);
+ 160             n := (box[j].w + 7) DIV 8 * box[j].h;
+ 161             WHILE n # 0 DO DEC(n); Files.ReadByte(R, b); SYSTEM.PUT(a, b); INC(a) END ;
+ 162             INC(j); INC(m)
+ 163           END;
+ 164           INC(k)
+ 165         END;
+ 166         WHILE m < 128 DO F.T[m] := a0; INC(m) END ;
+ 167         F.next := root; root := F
+ 168       ELSE (*bad file id*) F := Default
+ 169       END
+ 170     ELSE (*font file not available*) F := Default
+ 171     END
+ 172   END;
+ 173   RETURN F
+ 174 END This;
+ 175 
+ 176 PROCEDURE Free*;  (*remove all but first two from font list*)
+ 177   VAR f: Font;
+ 178 BEGIN f := root.next;
+ 179   IF f # NIL THEN f := f.next END ;
+ 180   f.next := NIL
+ 181 END Free;
+ 182 
+ 183 
+ 184 BEGIN root := NIL; (* JR Default := This("Oberon10.Scn.Fnt")*)
+ 185 
+ 186 End of unsused example token from Wirth 
+ 187 *************************************************************************)
+ 188 
+ 189 BEGIN
+ 190 END FontsFont.
 
-There were:  1 error, and No warnings
+There were: No errors, and  1 warning
 
 

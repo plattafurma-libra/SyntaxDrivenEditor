@@ -32,7 +32,7 @@ Listing:
   30 
   31 
   32  
-  33 IMPORT RTS,TextsCP, texts, Console, RegexApi, RegexMatching,RegexParser,CPmain; 
+  33 IMPORT RTS,TextsCP, texts, Console, FontsFont,RegexApi, RegexMatching,RegexParser,CPmain; 
   34 
   35 CONST IdLen = 32; 
   36     ident = 0; literal = 2; lparen = 3; lbrak = 4; lbrace = 5; bar = 6; eql = 7; 
@@ -144,10 +144,11 @@ Listing:
  142         RegexApi.ArrayToPointer(value,Ptr);
  143 END ReadNumberValue;
  144 
- 145 PROCEDURE FontDescription():RegexParser.FontDesc;
+ 145 PROCEDURE FontDescription():FontsFont.FontDesc;
  146 
  147 VAR attribute, value : ARRAY IdLen OF CHAR;
- 148         fontDesc:RegexParser.FontDesc;
+ 148         fontDesc:FONTSfont.FontDesc;
+**** -----------------^ Identifier not known in this scope
  149 BEGIN
  150         Console.WriteString("FONTDESCRIPTION  ");
  151         Console.WriteLn();
@@ -162,12 +163,11 @@ Listing:
  160                 ELSE error(10);
  161                 END;                                    
  162                 IF attribute = "Size" THEN 
- 163                         ReadValueNumber(fontDesc.size)
-**** ------------------------^ Identifier not known in this scope
+ 163                         ReadNumberValue(fontDesc.size)
  164                 ELSIF attribute = "Style" THEN
- 165                         
+ 165                         ReadValue(fontDesc.style);
  166                 ELSIF attribute = "Typeface" THEN
- 167                         ReadValue(fontDesc.style);
+ 167                         ReadValue(fontDesc.typeface);
  168                 ELSIF attribute = "Weight" THEN
  169                         ReadValue(fontDesc.weight);
  170                 ELSIF attribute = "Color" THEN

@@ -30,7 +30,7 @@ results. It is formulated as an Oberon module:
 
 
  
-IMPORT RTS,TextsCP, texts, Console, RegexApi, RegexMatching,RegexParser,CPmain; 
+IMPORT RTS,TextsCP, texts, Console, FontsFont,RegexApi, RegexMatching,RegexParser,CPmain; 
 
 CONST IdLen = 32; 
     ident = 0; literal = 2; lparen = 3; lbrak = 4; lbrace = 5; bar = 6; eql = 7; 
@@ -142,10 +142,10 @@ BEGIN
 	RegexApi.ArrayToPointer(value,Ptr);
 END ReadNumberValue;
 
-PROCEDURE FontDescription():RegexParser.FontDesc;
+PROCEDURE FontDescription():FontsFont.FontDesc;
 
 VAR attribute, value : ARRAY IdLen OF CHAR;
-	fontDesc:RegexParser.FontDesc;
+	fontDesc:FontsFont.FontDesc;
 BEGIN
 	Console.WriteString("FONTDESCRIPTION  ");
 	Console.WriteLn();
