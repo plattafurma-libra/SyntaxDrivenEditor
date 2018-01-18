@@ -114,6 +114,7 @@ public class Shared {
 	public boolean errorCase(int maxPosInParse) {
 		System.out.println("errorCase caretPos: "+caretPos
 		+ " maxPosInParse: "+maxPosInParse);
+		
 		return (caretPos>maxPosInParse);
 	}
 	
