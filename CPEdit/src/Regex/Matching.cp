@@ -85,53 +85,6 @@ BEGIN
 END MatchRange; 
 
 
-(********************************
-PROCEDURE DummyMatchChar(Ptr:POINTER TO ARRAY OF CHAR;rch:texts.RichChar):BOOLEAN;
-
-BEGIN
-	(* DummyMatchChar must be replaced on call (see Size(...), Style(....))by a 
-	boolean procedure with access to decoration feature of rich char 
-	(or block in draft.js)
-	 *)
-	RETURN TRUE;
-
-END DummyMatchChar;
-
-PROCEDURE Size(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
-BEGIN
-	IF regex.Font.size = NIL THEN RETURN TRUE
-	ELSE RETURN DummyMatchChar(regex.Font.size,rch);
-	END; 
-END Size;
-
-PROCEDURE Style(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
-BEGIN
-	IF regex.Font.style = NIL THEN RETURN TRUE
-	ELSE RETURN DummyMatchChar(regex.Font.style,rch);
-	END; 
-END Style;
-
-PROCEDURE Typeface(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
-BEGIN
-	IF regex.Font.typeface = NIL THEN RETURN TRUE
-	ELSE RETURN DummyMatchChar(regex.Font.typeface,rch);
-	END; 
-END Typeface;
-
-PROCEDURE Weight(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
-BEGIN
-	IF regex.Font.weight = NIL THEN RETURN TRUE
-	ELSE RETURN DummyMatchChar(regex.Font.weight,rch);
-	END; 
-END Weight;
-
-PROCEDURE Color(regex:RegexParser.Regex; rch:texts.RichChar):BOOLEAN;
-BEGIN
-	IF regex.Font.color = NIL THEN RETURN TRUE
-	ELSE RETURN DummyMatchChar(regex.Font.color,rch);
-	END; 
-END Color;
-************************************************)
 
 PROCEDURE FontMatch(rch:texts.RichChar; regex:RegexParser.Regex):INTEGER;
 
@@ -203,7 +156,7 @@ VAR  branch:RegexParser.Branch;
 				END;
 				IF flag THEN 
 					res:= FontMatch(rch,regex);
-					
+					flag:=res=1;					
 				ELSE
 					res:=-1;
 				END;

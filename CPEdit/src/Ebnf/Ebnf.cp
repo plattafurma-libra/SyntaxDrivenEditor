@@ -30,7 +30,11 @@ results. It is formulated as an Oberon module:
 
 
  
-IMPORT RTS,TextsCP, texts, Console, FontsFont,RegexApi, RegexMatching,RegexParser,CPmain; 
+IMPORT RTS,TextsCP, texts, Console, FontsFont,
+RegexApi, 
+RegexMatching,
+RegexParser,
+CPmain; 
 
 CONST IdLen = 32; 
     ident = 0; literal = 2; lparen = 3; lbrak = 4; lbrace = 5; bar = 6; eql = 7; 
@@ -539,7 +543,9 @@ BEGIN (*parse*)
 			Console.WriteString("parse after error ");
 			Console.WriteLn();
 			(* wait, until caret is reset (caretPos < (errorposition:) maxPosInParse) *)
-			WHILE (shared.errorCase(texts.Shared.maxPosInParse)) DO END;
+			WHILE (shared.errorCase(texts.Shared.maxPosInParse)) DO 
+			
+			END;
 			shared.getSharedText().setParsePos(0);			
 			
 			(*shared.backTrack:=FALSE;*)

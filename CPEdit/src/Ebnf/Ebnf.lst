@@ -32,7 +32,9 @@ Listing:
   30 
   31 
   32  
-  33 IMPORT RTS,TextsCP, texts, Console, FontsFont,RegexApi, RegexMatching,RegexParser,CPmain; 
+  33 IMPORT RTS,TextsCP, texts, Console, FontsFont,RegexApi, RegexMatching,CPmain; 
+**** Inconsistent module keys----------------------------------------------------^
+**** Module <RegexParser> already imported with different key
   34 
   35 CONST IdLen = 32; 
   36     ident = 0; literal = 2; lparen = 3; lbrak = 4; lbrace = 5; bar = 6; eql = 7; 
@@ -147,8 +149,7 @@ Listing:
  145 PROCEDURE FontDescription():FontsFont.FontDesc;
  146 
  147 VAR attribute, value : ARRAY IdLen OF CHAR;
- 148         fontDesc:FONTSfont.FontDesc;
-**** -----------------^ Identifier not known in this scope
+ 148         fontDesc:FontsFont.FontDesc;
  149 BEGIN
  150         Console.WriteString("FONTDESCRIPTION  ");
  151         Console.WriteLn();
@@ -295,6 +296,10 @@ Listing:
  292                 (* fontdescription*)                    
  293                 IF ch = '<' THEN
  294                         literalterminal.reg.regex.Font:=FontDescription();
+**** --------------------------------------------^
+**** The current type is opaque and cannot be selected further
+**** Not a record type, so you cannot select a field---^
+**** Module <RegexParser> is not imported
  295                 END;            
  296                 GetSym;                 
  297                 
@@ -608,6 +613,6 @@ Listing:
  605         (*************************************************************************)
  606 END Ebnf.
 
-There were:  1 error, and No warnings
+There were:  3 errors, and No warnings
 
 
