@@ -1,5 +1,6 @@
 MODULE Ebnf;
 
+
 (* TO DO for terminal nodes which are matched in Regex:
 Font Description: 
 1. Size:(e.g., 12 point vs. 16 point), 
@@ -30,10 +31,15 @@ results. It is formulated as an Oberon module:
 
 
  
-IMPORT RTS,TextsCP, texts, Console, FontsFont,
+IMPORT RTS,(*java_util_regex,*)
+
+TextsCP, texts, Console, 
+FontsFont,
 RegexApi, 
 RegexMatching,
 RegexParser,
+RegexReplace,
+SyntaxTree,
 CPmain; 
 
 CONST IdLen = 32; 
@@ -42,50 +48,127 @@ CONST IdLen = 32;
     
 TYPE Identifier = ARRAY IdLen OF CHAR; 
 
-     Symbol*=POINTER TO EXTENSIBLE RECORD alt,next:Symbol 
+     Symbol=POINTER TO EXTENSIBLE RECORD alt,next:Symbol 
      END;
      
      Terminal=POINTER TO RECORD(Symbol) sym:INTEGER;name:ARRAY IdLen OF CHAR; 
      	     	reg:RegexApi.Regex;
+     	     	
      END;
      
-     (* wrapper for Symbols p, q,r,s which might be used in ebnf as substitute for call by name;
-     to be used for reemplimation in java 
-     *)
      
-     SymbolsWrapper =POINTER TO RECORD p,q,r,s:Symbol;
-     END;
      
      Nonterminal = POINTER TO NTSDesc;
-	 NTSDesc = RECORD (Symbol) this: Header END;
+	 NTSDesc = RECORD (Symbol) ptrToHeaderList: Header END;
 	 Header = POINTER TO HDesc;
 	 HDesc = RECORD sym: Symbol; entry: Symbol; suc:Header; name: ARRAY IdLen OF CHAR END;
+	 
+	 StackPointer = POINTER TO RECORD
+		ptr:Element;
+	 END;
+
+
+	 Element = POINTER TO RECORD
+		symbol:Symbol;
+		suc:Element;
+		treeNode:SyntaxTree.TreeNode;
+	 END;
+	 
+	 (* wrapper for Symbols p, q,r,s which might be used in ebnf as substitute for call by name;
+     to be used for reemplimation in java 
+     *)     
+     SymbolsWrapper =POINTER TO RECORD p,q,r,s:Symbol;
+     END;
+	
 	      
 VAR list,sentinel,h:Header;
 	q,r,s: Symbol;
-	startsymbol*:Symbol (* startsymbol for parse if called from editor, is exported to call of parse procedure*);
+	startsymbol:Nonterminal (* startsymbol for parse if called from editor, is exported to 
+	call of parse procedure*);
 
 	ch: CHAR; 	 
     sym:      INTEGER;       
     lastpos:  INTEGER;  
-   
+    count:INTEGER;
     id:       Identifier;       
     R:        TextsCP.Reader;       
     W:        TextsCP.Writer;       
     
    
+   
     shared:texts.Shared;
     
+    parseStack:StackPointer;
+        
+    root*:SyntaxTree.TreeNode; 
+   
+   
+    
+PROCEDURE getNodeName(grammarNode:Symbol;VAR name:ARRAY OF CHAR);
+
+BEGIN
+	IF grammarNode=NIL THEN name:="node = Nil"
+	ELSIF grammarNode IS Terminal THEN
+			name:="Terminal: "+grammarNode(Terminal).name$;
+	ELSIF grammarNode IS Nonterminal THEN
+		name:=" NonTerminal: "+grammarNode(Nonterminal).ptrToHeaderList.name$;
+	ELSE
+		name:= "";
+	END;
+END getNodeName;
   
+PROCEDURE (st:StackPointer) Factory(node:Symbol):Element,NEW;
+VAR element:Element;
+BEGIN
+	NEW(element);element.symbol:=node;
+	element.suc:=NIL; element.treeNode:=NIL;
+	RETURN element;
+END Factory;
+
+
+PROCEDURE (st:StackPointer) push(new:Element),NEW;
+VAR old:Element;nodeName:ARRAY IdLen OF CHAR;
+BEGIN
+	getNodeName(new.symbol,nodeName);
+	TextsCP.WriteString(" push: "+nodeName+" ");
+	old:=st.ptr;
+	new.suc:=old;
+	st.ptr:=new;
+END push;
+
+
+PROCEDURE (st:StackPointer) pop():Element,NEW;
+VAR element:Element;nodeName:ARRAY IdLen OF CHAR;
+BEGIN
+	element:=st.ptr;
+	IF element = NIL THEN 
+		TextsCP.WriteString(" pop Nil");
+		TextsCP.WriteLn;
+		RETURN NIL 
+	ELSE
+		st.ptr:=element.suc;
+		element.suc:=NIL;
+		getNodeName(element.symbol,nodeName);
+		TextsCP.WriteString(" pop: "+nodeName);
+		TextsCP.WriteLn;
+		getNodeName(element.symbol.next,nodeName);
+		TextsCP.WriteString(" next: "+nodeName);
+		TextsCP.WriteLn;
+		RETURN element;
+	END;
+END pop;
+	
+
+
 PROCEDURE error(n: INTEGER); 
               VAR pos: INTEGER;       
 BEGIN pos := TextsCP.Pos(R); 
-	Console.WriteString("error nr: ");Console.WriteInt(n,2);Console.WriteLn;
+	TextsCP.WriteString("error nr: ");TextsCP.WriteInt(n,2);TextsCP.WriteLn;
     IF pos > lastpos+4 THEN  (*avoid spurious error messages*) 
-        TextsCP.WriteString(W, "  pos"); TextsCP.WriteInt(W, pos, 6); 
-        TextsCP.WriteString(W, "  err"); TextsCP.WriteInt(W, n, 4); lastpos := pos; 
-        TextsCP.WriteString(W,"sym"); TextsCP.WriteInt(W, sym, 4); 
-        TextsCP.WriteLn(W);   (* TextsCP.Append(Oberon.Log,W.buf)   *) 
+        TextsCP.WriteString("  pos"); TextsCP.WriteInt(pos, 6); 
+        TextsCP.WriteString("  err"); TextsCP.WriteInt(n, 4); lastpos := pos; 
+        TextsCP.WriteString("sym"); TextsCP.WriteInt(sym, 4); 
+        TextsCP.WriteLn();   (* TextsCP.Append(Oberon.Log,W.buf)   *) 
     END;
     RTS.Throw(" error");       
 END error;  
@@ -108,8 +191,8 @@ BEGIN
 	END;
 	Str[i]:=0X;
 	skipBlank;	
-	Console.WriteString(Str);
-	Console.WriteLn();
+	TextsCP.WriteString(Str);
+	TextsCP.WriteLn();
 END ReadString;
 
 PROCEDURE ReadNumberString(VAR Str:ARRAY OF CHAR);
@@ -124,8 +207,8 @@ BEGIN
 	END;
 	Str[i]:=0X;
 	skipBlank;
-	Console.WriteString(Str);
-	Console.WriteLn();	
+	TextsCP.WriteString(Str);
+	TextsCP.WriteLn();	
 END ReadNumberString;
 
 PROCEDURE ReadValue(VAR Ptr: POINTER TO ARRAY OF CHAR);
@@ -151,8 +234,8 @@ PROCEDURE FontDescription():FontsFont.FontDesc;
 VAR attribute, value : ARRAY IdLen OF CHAR;
 	fontDesc:FontsFont.FontDesc;
 BEGIN
-	Console.WriteString("FONTDESCRIPTION  ");
-	Console.WriteLn();
+	TextsCP.WriteString("FONTDESCRIPTION  ");
+	TextsCP.WriteLn();
 	(* next ch after <  *)
 	TextsCP.Read(R,ch);
 	NEW(fontDesc);
@@ -217,10 +300,13 @@ BEGIN
                     INC(i);
                     IF i > IdLen THEN error(1);
                     END;
+                    
                     TextsCP.Read(R,ch)       
    				END ; 
 				(* Wirth IF ch <= " " THEN error(1) END ;	*)
-				id[i] := 0X; TextsCP.Read(R, ch) 
+				id[i] := 0X; 
+				
+				TextsCP.Read(R, ch) 
 				
 			|  "=" : sym := eql; TextsCP.Read(R, ch) 
 			|  "(" : sym := lparen; TextsCP.Read(R, ch) 
@@ -271,12 +357,13 @@ VAR q1, s1:Symbol;
 
        PROCEDURE factor(VAR p,q,r,s:Symbol);    
        VAR a:Symbol;identifiernonterminal:Nonterminal;literalterminal:Terminal; h:Header;
+       regexStr:RTS.NativeString;
        BEGIN h:=NIL;a:=NIL;identifiernonterminal:=NIL;literalterminal:=NIL;        		
             IF sym = ident (*nonterminal*) THEN
             	NEW(identifiernonterminal);
             	find(id$,h);
             	(* name of nonterminal symbol may be accessed via h.name);*)
-            	identifiernonterminal.this:=h;
+            	identifiernonterminal.ptrToHeaderList:=h;
             	a:=identifiernonterminal;a.alt:=NIL;a.next:=NIL;
             	
             	(*record(T0, id, 1);*)  
@@ -284,14 +371,16 @@ VAR q1, s1:Symbol;
             	GetSym 
             ELSIF sym = literal (*terminal*) THEN 
             	NEW(literalterminal);literalterminal.sym:=sym;
+            	RegexReplace.replaceInRegex(id);
             	literalterminal.name:=id$; 
             	literalterminal.reg:=RegexApi.CreateRegex(id$);
+            	regexStr:=MKSTR(id$); 
             	
             	a:=literalterminal;a.alt:=NIL;a.next:=NIL;
             	(*record(T1, id, 0);*) 
             	
             	p:=a;q:=a;r:=a;s:=a; 
-            	Console.Write(ch);            	
+            	TextsCP.Write(ch);            	
             	skipBlank();
             	(* fontdescription*)            	
             	IF ch = '<' THEN
@@ -372,15 +461,15 @@ END syntax;
 PROCEDURE checkSyntax():BOOLEAN;
 VAR h:Header;error:BOOLEAN;(*i:INTEGER;*)
 BEGIN
-	Console.WriteLn();
+	TextsCP.WriteLn();
 	h:=list;error:=FALSE;
 	WHILE h # sentinel DO	
 		IF h.entry=NIL THEN 
 			error:=TRUE;
-			Console.WriteString("undefined Symbol "+h.name);Console.WriteLn();
-		ELSE Console.WriteString("Symbol "+h.name);Console.WriteLn();
+			TextsCP.WriteString("undefined Symbol "+h.name);TextsCP.WriteLn();
+		ELSE TextsCP.WriteString("Symbol "+h.name);TextsCP.WriteLn();
 			(*i:=0;
-			WHILE h.name[i]#0X DO Console.Write(h.name[i]);INC(i);END;Console.WriteLn();
+			WHILE h.name[i]#0X DO TextsCP.Write(h.name[i]);INC(i);END;TextsCP.WriteLn();
 			*)
 		END;
 		h:=h.suc;
@@ -390,11 +479,13 @@ END checkSyntax;
             
 PROCEDURE Compile*():BOOLEAN; 
 VAR ok:BOOLEAN;
-BEGIN (*set R to the beginning of the text to be compiled*) 
-	TextsCP.WriteString(W,"Compile Start read Grammar");Console.WriteLn();
-	R.filename:= "C://users//rols//lexGrammar.txt";	
+BEGIN 
+	
+	(*set R to the beginning of the text to be compiled*) 
+	TextsCP.WriteString("Compile Start read Grammar");TextsCP.WriteLn();
+	R.filename:= texts.Texts.grammar;	
 	TextsCP.OpenReader(R);
-	Console.WriteString("EBNF nach OpenReader");Console.WriteLn();	
+	TextsCP.WriteString("EBNF nach OpenReader");TextsCP.WriteLn();	
 	
 	ok:=FALSE;
     lastpos := 0; 
@@ -406,207 +497,414 @@ BEGIN (*set R to the beginning of the text to be compiled*)
     END;   
     (*TextsCP.Append(Oberon.Log,W.buf) *)   
     IF ok THEN
-    	TextsCP.WriteString(W,"Compile ok")
-    ELSE TextsCP.WriteString(W,"Compile failed");
+    	TextsCP.WriteString("Compile ok")
+    ELSE TextsCP.WriteString("Compile failed");
     END;
-    Console.WriteLn(); 
+    TextsCP.WriteLn(); 
     RETURN ok; 
-END Compile;    
+END Compile;  
 
 
-PROCEDURE parse*(node:Symbol):BOOLEAN;
+  
+PROCEDURE walk(node:SyntaxTree.TreeNode);
+VAR name:ARRAY SyntaxTree.NameLen OF CHAR;
+BEGIN 
+	TextsCP.WriteString("in walk");
+	TextsCP.WriteLn;
+	IF node # NIL THEN
+		node.nodeName(name);
+		TextsCP.WriteString(name);
+		TextsCP.WriteLn;
+		IF node IS SyntaxTree.NonTerminalTreeNode THEN
+			walk(node(SyntaxTree.NonTerminalTreeNode).child);
+		END;
+		walk(node.suc);
+	END;
+END walk;
 
-VAR resParse:BOOLEAN; pos:INTEGER;nodeName:ARRAY IdLen OF CHAR;
 
+PROCEDURE setChild(mother,child:SyntaxTree.TreeNode);
+VAR name:ARRAY SyntaxTree.NameLen OF CHAR;
+BEGIN
+	TextsCP.WriteString("setChild:");
+	IF mother # NIL THEN
+		mother.nodeName(name);
+		TextsCP.WriteString(" mother: "+name);
+		IF child # NIL THEN
+			child.nodeName(name);
+			TextsCP.WriteString("child: "+name);
+		END;
+		mother(SyntaxTree.NonTerminalTreeNode).child:=child;
+	END;
+	TextsCP.WriteLn;
+END setChild;
+
+PROCEDURE setSuc(prev,suc:SyntaxTree.TreeNode);
+VAR name:ARRAY SyntaxTree.NameLen OF CHAR;
+BEGIN
+	TextsCP.WriteString("setSuc:");		
+	IF prev # NIL THEN
+		prev.nodeName(name);
+		TextsCP.WriteString("prev: "+name);
+		IF suc # NIL THEN
+			suc.nodeName(name);
+			TextsCP.WriteString(" suc: "+name);
+		END;
+		prev.suc:=suc;
+	END;
+	TextsCP.WriteLn;
+END setSuc;
+
+
+PROCEDURE parse(mother:SyntaxTree.NonTerminalTreeNode;
+				prev:SyntaxTree.TreeNode;
+				node:Symbol):BOOLEAN;
+
+VAR resParse:BOOLEAN; 
+	treeNode:SyntaxTree.TreeNode;
+	pos:INTEGER;
+	nodeName:ARRAY IdLen OF CHAR;
+	element,dummyElement:Element;
+	
+
+		
 		PROCEDURE match(tNode:Terminal):BOOLEAN;
 	
-		VAR index:INTEGER;ch:CHAR;testChar:CHAR;resMatch:BOOLEAN;
-	
+		VAR resMatch:BOOLEAN;elementInMatch:Element;
+			terminalTreeNode:SyntaxTree.TerminalTreeNode;
+			
+			
+			
 		(*          *)
-		BEGIN
-			Console.WriteString("parse.match Start pos: ");
-			Console.WriteInt(shared.getSharedText().getParsePos(),2);
-			Console.WriteString(" "+tNode.name$);
-			Console.WriteLn();
+		BEGIN (*match*)
+			TextsCP.WriteString("match:  Start pos: ");
+			TextsCP.WriteInt(shared.getSharedText().getParsePos(),2);
+			TextsCP.WriteString(" "+tNode.name$);
+			TextsCP.WriteLn();
 			IF shared.backTrack THEN
 			
-				Console.WriteString(" Match backTrack");
-				Console.WriteLn();
+				TextsCP.WriteString
+				("match: shared.backTrack 1 true return false");
+				TextsCP.WriteLn();
 				RETURN FALSE;
 			END;
 			
-			index:=0;
+			
 			resMatch:=
 			RegexMatching.EditMatch(tNode.reg.regex,shared);
-			
+			(*tNode.regexCompiled.editMatch(shared);*)
 			IF resMatch THEN 
-				Console.WriteString(" after EditMatch resMatch true");
+				TextsCP.WriteString("match: after EditMatch resMatch true");
 			ELSE
-				Console.WriteString(" after EditMatch resMatch false");
+				TextsCP.WriteString("match: after EditMatch resMatch false");
 			END; 
 			
-			Console.WriteString(" for "+tNode.name$+ " parsePos: ");
-			Console.WriteInt(shared.getSharedText().getParsePos(),2); 
-			Console.WriteLn();
-			IF shared.backTrack THEN 
-				Console.WriteString("EditMatch backTrack true");				
-				Console.WriteLn();
+			TextsCP.WriteString(" for "+tNode.name$+ " parsePos: ");
+			TextsCP.WriteInt(shared.getSharedText().getParsePos(),2); 
+			TextsCP.WriteLn();
+			IF shared.backTrack THEN  
+				TextsCP.WriteString
+				("match: EditMatch shared.backTrack 2 true return false");				
+				TextsCP.WriteLn();
 				RETURN FALSE 
-			ELSE
-				RETURN resMatch;
+			ELSIF resMatch THEN
+				(* bredth second, get successor of some (previous) rule*)
+				elementInMatch:=parseStack.pop();
+				IF elementInMatch = NIL (* termination *) THEN
+					IF shared.backTrack THEN 
+						TextsCP.WriteString
+						("match: shared.backTrack 3 true return false");				
+						TextsCP.WriteLn();
+						RETURN FALSE;
+					ELSE  
+						TextsCP.WriteString
+						("match: success elementInMatch NIL termination ");				
+						TextsCP.WriteLn();
+						terminalTreeNode:=
+							SyntaxTree.TerminalTreeNodeFactory(tNode.name$,
+							shared.getSharedText(),
+							pos,
+							shared.getSharedText().getParsePos());
+						treeNode:=terminalTreeNode;
+						setChild(mother,treeNode);
+						setSuc(prev,treeNode);
+						RETURN TRUE;
+					END;
+				ELSE 
+					terminalTreeNode:=
+					SyntaxTree.TerminalTreeNodeFactory(tNode.name$,
+					shared.getSharedText(),
+					pos,shared.getSharedText().getParsePos());
+					
+					treeNode:=terminalTreeNode;
+					setChild(mother,treeNode);
+					setSuc(prev,treeNode);		
+					(* if sequence of more than one terminal node
+					*)			
+					IF elementInMatch.treeNode=NIL THEN
+						TextsCP.WriteString
+						("match elementInMatch.treeNode=NIL for preceding"+
+						tNode.name$);
+						TextsCP.WriteLn;
+						elementInMatch.treeNode:=treeNode;
+					ELSE TextsCP.WriteString("****match elementInMatch.treeNode#NIL");
+						TextsCP.WriteLn;
+					END;
+					
+					resMatch:=parse(NIL,
+					elementInMatch.treeNode,
+					elementInMatch.symbol.next); 
+					(* redo stack *)
+					parseStack.push(elementInMatch);
+					IF shared.backTrack THEN 
+						TextsCP.WriteString
+						("match: shared.backTrack 4 true return false");				
+						TextsCP.WriteLn();
+						treeNode:=NIL;
+						setChild(mother,NIL);
+						setSuc(prev,NIL);
+						RETURN FALSE;
+					END;
+					IF resMatch THEN
+						RETURN TRUE;
+					ELSE treeNode:=NIL; 
+						setChild(mother,NIL);
+						setSuc(prev,NIL);
+						RETURN FALSE;
+					END;
+				END;
+			ELSE RETURN FALSE;
 			END;		
 		END match;
 	
+		
 	
 
+
 BEGIN (*parse*)
-	(* 17-12-12 *)
+	INC(count);
+	TextsCP.WriteString("parse Entry count: ");
+	TextsCP.WriteInt(count,2);
+	getNodeName(node,nodeName);
+	TextsCP.WriteString(" node: ");
+	TextsCP.WriteString(nodeName);
+	TextsCP.WriteLn();
+	treeNode:=NIL;
+	walk(root);
+	(*   grammar error *)
 	IF node = NIL THEN 
-		Console.WriteString("parse entry node nil");
-		Console.WriteLn();
-		RETURN TRUE;
-	END;
-	(*
-	IF shared.backTrack THEN
-		Console.WriteString("parse backTrack true");
-		Console.WriteLn();
-		IF node#list.entry THEN RETURN FALSE
-		ELSE
-			txt.setTextPos(0);
-			Console.WriteString("parse after backtrack restart");
-			Console.WriteLn();
-			shared.backTrack:=FALSE;
-		END;
-	END;
-	*)
-	IF node IS Terminal THEN
-		nodeName:=node(Terminal).name$
-	ELSE nodeName:=node(Nonterminal).this.name$;
-	END;
-	Console.WriteString("parse node: "+nodeName);
-	Console.WriteLn();
-	pos:=shared.getSharedText().getParsePos();
-	IF pos> texts.Shared.maxPosInParse THEN texts.Shared.maxPosInParse := pos;
-	END;
-	resParse:=FALSE;	
-	
-	IF node IS Terminal THEN
-			resParse:=match(node(Terminal));
-			IF shared.backTrack THEN RETURN FALSE END;
-			Console.WriteString("parse resParse after match Pos: ");
-			Console.WriteInt(shared.getSharedText().getParsePos(),2);
-			IF resParse THEN Console.WriteString(" TRUE")
-			ELSE Console.WriteString(" FALSE");
-			END;
-			Console.WriteLn();			
-		(* depth first recursion for nonterminal *)
-	ELSE resParse:=parse(node(Nonterminal).this(*pointer to headerlist*).entry);
-	END;
-	IF shared.backTrack THEN
-		Console.WriteString("parse backTrack true");
-		Console.WriteLn();
-		
-		IF node # list.entry THEN RETURN FALSE
-		ELSE
-			shared.getSharedText().setParsePos(0);
-			Console.WriteString("parse after backtrack restart");
-			Console.WriteLn();
-			shared.backTrack:=FALSE;
-			(* new start *)
-			resParse :=parse(list.entry);
-		END;
-	END;
-	(* IF shared.backTrack THEN RETURN FALSE END; *)
-	(* bredth second recursion *)
-	IF resParse THEN 
-		Console.WriteString ("parse vor bredth second");
-		Console.WriteLn();
-		IF node.next=NIL THEN
-			Console.WriteString ("node.next NIL vor bredth second");
-			Console.WriteLn();
-		END;
-		resParse:=parse(node.next);
-		IF shared.backTrack THEN RETURN FALSE
-		ELSIF resParse  THEN RETURN TRUE;
-		END;
-	END;
-	IF shared.backTrack THEN RETURN FALSE 
-	END;
-	(* alternative after fail, reset position in text *)
-	shared.getSharedText().setParsePos(pos);
-	(* no alt node is fail; if needed for distinction of case of empty node which is matched
-		without change of pos*)
-	IF node.alt=NIL THEN 
-		(* error, restart; s.above backTrack *)
-		IF node # list.entry THEN RETURN FALSE
-		ELSE
-			Console.WriteString("parse after error ");
-			Console.WriteLn();
-			(* wait, until caret is reset (caretPos < (errorposition:) maxPosInParse) *)
-			WHILE (shared.errorCase(texts.Shared.maxPosInParse)) DO 
-			
-			END;
-			shared.getSharedText().setParsePos(0);			
-			
-			(*shared.backTrack:=FALSE;*)
-			(* new start *)
-			Console.WriteString("parse after error; parse restart ");
-			Console.WriteLn();
-			RETURN parse(list.entry);
-		END;
-		RETURN FALSE
-	ELSIF parse(node.alt) THEN 
-		IF shared.backTrack THEN RETURN FALSE ELSE RETURN TRUE
-		END;
-	ELSE shared.getSharedText().setParsePos(pos);
 		RETURN FALSE;		
 	END;
+	
+	(*  *)
+	element:=NIL;
+	IF node.next # NIL THEN
+		TextsCP.WriteString("push element for next");TextsCP.WriteLn;
+		element:=parseStack.Factory(node);
+		parseStack.push(element);
+	END;
+	
+	pos:=shared.getSharedText().getParsePos();
+	IF pos> texts.Shared.maxPosInParse THEN 
+		texts.Shared.maxPosInParse := pos;
+	END;
+	TextsCP.WriteString("parse pos ");
+	TextsCP.WriteInt(pos,2);
+	TextsCP.WriteLn();
+	resParse:=FALSE;	
+	(* evaluate resParse;
+		two possibilities: 1.terminal (i.e. bredth second after match)
+						   2.nonterminal 
+	*)
+	IF node IS Terminal THEN
+			TextsCP.WriteString("parse terminal node");
+			TextsCP.WriteLn();
+			resParse:=match(node(Terminal));
+			
+			TextsCP.WriteString("parse resParse after match Pos: ");
+			TextsCP.WriteInt(shared.getSharedText().getParsePos(),2);
+			IF resParse THEN TextsCP.WriteString(" TRUE")
+			ELSE TextsCP.WriteString(" FALSE");
+			END;
+			TextsCP.WriteLn();	
+			
+	ELSE (* nonterminal: depth first recursion *)
+			
+		TextsCP.WriteString("parse nonterminal node");
+		TextsCP.WriteLn();
+		treeNode:=
+		SyntaxTree.NonTerminalTreeNodeFactory(nodeName);
+		setChild(mother,treeNode);
+		setSuc(prev,treeNode);
+		(* set root for output *)
+		IF root=NIL THEN root:=treeNode;
+		END;
+		
+		IF element # NIL THEN
+			element.treeNode:=treeNode;
+		END;
+		
+		resParse:=parse(treeNode(SyntaxTree.NonTerminalTreeNode),NIL,
+		node(Nonterminal).ptrToHeaderList(*pointer to headerlist*).entry);
+		IF resParse THEN TextsCP.WriteString("parse resParse true")
+		ELSE TextsCP.WriteString("parse resParse false");
+			treeNode:=NIL;
+		END;
+		TextsCP.WriteLn();
+	END;
+	(* remove pushed (last) element *)
+	IF element#NIL THEN 
+		element.treeNode:=NIL;
+		dummyElement:=parseStack.pop();
+	END;
+	(* reset position *)
+	shared.getSharedText().setParsePos(pos);
+	DEC(count);
+	IF resParse THEN
+		RETURN TRUE;
+	ELSE
+	
+	    (*IF shared.backTrack THEN*) (*resParse false; shared.backTrack *)
+	    treeNode:=NIL;
+		TextsCP.WriteString("parse backTrack");
+		TextsCP.WriteLn();
+		setChild(mother,NIL);
+		setSuc(prev,NIL);
+		IF node # startsymbol THEN 
+			IF shared.backTrack THEN RETURN FALSE
+			ELSIF node.alt=NIL (* check whether alternative *) THEN
+				TextsCP.WriteString("parse node.alt=Nil");
+				TextsCP.WriteLn();
+				RETURN FALSE
+			ELSE 
+				TextsCP.WriteString("parse vor parse node.alt");
+				TextsCP.WriteLn();
+				(* todo fehler wenn mother und prev # nil???*)
+				resParse:=parse(mother,prev,node.alt);
+				RETURN resParse;
+			END;
+		ELSE (* node = startsymbol*)
+			(* wait, until caret is reset (caretPos < (errorposition:) maxPosInParse) *)
+			shared.backTrack:=FALSE;
+			WHILE (shared.errorCase(texts.Shared.maxPosInParse)) DO 
+				
+			END;
+			shared.getSharedText().setParsePos(0);
+			TextsCP.WriteString("parse after backtrack restart");
+			TextsCP.WriteLn();
+			(*shared.backTrack:=FALSE;*)
+			(* new start *)
+			treeNode:=NIL;parseStack.ptr:=NIL;
+			setChild(mother,NIL);
+			setSuc(prev,NIL);
+			 (*texts.Shared.maxPosInParse:=0;*)
+			count:=0;element:=NIL;root:=NIL;
+			resParse :=parse(NIL,NIL,node);
+			TextsCP.WriteString("parse after restart ");
+			IF resParse THEN TextsCP.WriteString("resParse TRUE")
+			ELSE TextsCP.WriteString("resParse FALSE");
+			END;
+			TextsCP.WriteLn();
+			RETURN resParse;
+		END;
+	
+	END;
+	
+	
 	
 END parse;
 
 
+(***************
+PROCEDURE walk(node:SyntaxTree.TreeNode);
+VAR name:ARRAY SyntaxTree.NameLen OF CHAR;
+BEGIN 
+	TextsCP.WriteString("in walk");
+	TextsCP.WriteLn;
+	IF node # NIL THEN
+		node.nodeName(name);
+		TextsCP.WriteString(name);
+		TextsCP.WriteLn;
+		IF node IS SyntaxTree.NonTerminalTreeNode THEN
+			walk(node(SyntaxTree.NonTerminalTreeNode).child);
+		END;
+		walk(node.suc);
+	END;
+END walk;
+**************)
+
+
+PROCEDURE syntaxDrivenParse*():SyntaxTree.TreeNode;
+
+BEGIN
+	root:=NIL;
+	IF parse(NIL,NIL,startsymbol) THEN
+		TextsCP.WriteLn;
+		TextsCP.WriteString("walk");
+		TextsCP.WriteLn;
+		walk(root);
+		RETURN root;
+	ELSE RETURN NIL;
+	END;	
+END syntaxDrivenParse;
+
+
 PROCEDURE init*(sh:texts.Shared):BOOLEAN;
 
-VAR ch:CHAR;
+VAR ch:CHAR;R:TextsCP.Reader;  
 BEGIN
-	Console.WriteString("Init entry");Console.WriteLn();	
+	
+	count:=0;startsymbol:=NIL;
+	NEW (parseStack);parseStack.ptr:=NIL;root:=NIL;
+	TextsCP.WriteString("Init entry");TextsCP.WriteLn();
+	TextsCP.WriteString("vor RegexReplace.Init");
+	TextsCP.WriteLn();
+	TextsCP.WriteString("Init read RegexReplace");TextsCP.WriteLn();
+	
+	
+	TextsCP.WriteString("EBNF nach OpenReader");TextsCP.WriteLn();	
+	RegexReplace.Init();	
+	
 	IF Compile() THEN 		
-		Console.WriteString("nach Compile");Console.WriteLn();		
-			
-		startsymbol:=list.entry;
+		TextsCP.WriteString("nach Compile");TextsCP.WriteLn();		
+		NEW(startsymbol);
+		startsymbol.alt:=NIL;startsymbol.next:=NIL;	
+		startsymbol.ptrToHeaderList:=list;
 		shared:=sh;
-		(*txt:=shared.getSharedText();(* for getParsePos and setParsePos access*)		
-		RegexMatching.GetStartCh(sh);		
-		ch:=sh.getSym();
-		*)
+		
 		RETURN TRUE;
 	ELSE RETURN FALSE;
 	END;
+	
 END init;
 
 BEGIN (*Auto-generated*)
-	(********************************************************************)
+	
+	
+	(******************************)
+	count:=0;
 	shared:=NIL;startsymbol:=NIL;
 	texts.Shared.maxPosInParse:=0;
-	Console.WriteString("EBNF Start ");Console.WriteLn();
+	NEW (parseStack);parseStack.ptr:=NIL;
+	TextsCP.WriteString("EBNF Start ");TextsCP.WriteLn();
 	
 		
 	IF init(shared) THEN 		
-		Console.WriteString("EBNF nach Init");Console.WriteLn();			
+		TextsCP.WriteString("EBNF nach Init");TextsCP.WriteLn();			
 		(*  *)
 		(*txt:=shared.texts;*)
 		
-		IF parse(list.entry(* before: list only *)) THEN
-			Console.WriteString(" parse ok")
-		ELSE Console.WriteString(" parse failed");
+		IF parse(NIL,NIL,startsymbol(* before: list only *)) THEN
+			TextsCP.WriteString(" parse ok")
+		ELSE TextsCP.WriteString(" parse failed");
 			(* return errorposition TO DO *)
-			Console.WriteString(" maxPosInParse: ");
-			Console.WriteInt(texts.Shared.maxPosInParse,2);
+			TextsCP.WriteString(" maxPosInParse: ");
+			TextsCP.WriteInt(texts.Shared.maxPosInParse,2);
 		END;
 		
 	END;
 	
 	
-	Console.WriteString("EBNF End");Console.WriteLn();
+	TextsCP.WriteString("EBNF End");TextsCP.WriteLn();
 	(*************************************************************************)
 END Ebnf.

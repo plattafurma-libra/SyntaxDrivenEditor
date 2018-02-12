@@ -1,6 +1,6 @@
 MODULE RegexApi;
 
-IMPORT RegexParser,RegexMatching, Console;
+IMPORT RegexParser,RegexMatching, TextsCP;
 
 TYPE Regex*=POINTER TO RECORD
 		regex*:RegexParser.Regex
@@ -25,6 +25,7 @@ BEGIN
 	regString:=NIL;
 	NEW(reg);
 	NEW(reg.regex);
+	
 	ArrayToPointer(str,regString);
 	RegexParser.InitCreateRegex(regString,reg.regex);
 	RETURN reg
@@ -69,9 +70,9 @@ VAR result:BOOLEAN;
 	tarString:POINTER TO ARRAY OF CHAR;
 	
 BEGIN	
-	Console.WriteLn();
-	Console.WriteString ("Match " + str);
-	Console.WriteLn();
+	TextsCP.WriteLn();
+	TextsCP.WriteString ("Match " + str);
+	TextsCP.WriteLn();
 	tarString:=NIL;
 	ArrayToPointer(str,tarString);
 	result:=RegexMatching.Match(reg.regex,tarString);

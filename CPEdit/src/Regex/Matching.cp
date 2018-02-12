@@ -1,6 +1,6 @@
 MODULE RegexMatching;
 
-IMPORT RegexParser,FontsFont, texts, Console;
+IMPORT RegexParser,FontsFont, texts, TextsCP;
 
 TYPE Regex=POINTER TO EXTENSIBLE RECORD (RegexParser.RegexType) END;
 
@@ -12,21 +12,21 @@ VAR i:INTEGER;
 	
 PROCEDURE WriteMessage(str:ARRAY OF CHAR);
 BEGIN
-	Console.WriteString(str);
-	Console.WriteLn;
+	TextsCP.WriteString(str);
+	TextsCP.WriteLn;
 END WriteMessage;
 		
 PROCEDURE WriteEntry(fromProcedure:ARRAY OF CHAR;ch:CHAR;i:INTEGER);
 
 
 BEGIN	
-	Console.WriteString(fromProcedure +" Entry:  ");		
-	IF ch # 0X THEN Console.Write(ch);
+	TextsCP.WriteString(fromProcedure +" Entry:  ");		
+	IF ch # 0X THEN TextsCP.Write(ch);
 	END;
 	
-	IF i >= 0 THEN Console.WriteString(" Position i: "); Console.WriteInt(i,2);
+	IF i >= 0 THEN TextsCP.WriteString(" Position i: "); TextsCP.WriteInt(i,2);
 	END;
-	Console.WriteLn();
+	TextsCP.WriteLn();
 END WriteEntry;
 
 
@@ -36,12 +36,12 @@ PROCEDURE WriteExit(fromProcedure:ARRAY OF CHAR;valResult:INTEGER;ch:CHAR;i:INTE
 VAR res:ARRAY 10 OF CHAR; 
 BEGIN
 	IF valResult=1  THEN res:="TRUE" ELSIF valResult=-1 THEN res:="FALSE" ELSE res:=""; END;
-	Console.WriteString(fromProcedure +" Exit: "+res+"  ");		
-	IF ch # 0X THEN Console.Write(ch);
+	TextsCP.WriteString(fromProcedure +" Exit: "+res+"  ");		
+	IF ch # 0X THEN TextsCP.Write(ch);
 	END;
-	IF i >= 0 THEN Console.WriteString(" Position i: ");Console.WriteInt(i,2);
+	IF i >= 0 THEN TextsCP.WriteString(" Position i: ");TextsCP.WriteInt(i,2);
 	END;
-	Console.WriteLn();
+	TextsCP.WriteLn();
 END WriteExit;
 
 (*-------------------------Matching Procedures---------------------------*)
@@ -63,11 +63,11 @@ BEGIN
 	IF sh.backTrack THEN RETURN END;
 	LOOP
 		IF range=NIL THEN EXIT END;
-		Console.WriteString("MatchRange range.min: "); 
-		Console.Write(range.min);
-		Console.WriteString(" MatchRange range.max: "); 
-		Console.Write(range.max);
-		Console.WriteLn();
+		TextsCP.WriteString("MatchRange range.min: "); 
+		TextsCP.Write(range.min);
+		TextsCP.WriteString(" MatchRange range.max: "); 
+		TextsCP.Write(range.max);
+		TextsCP.WriteLn();
 		flag:=((rch.ch>=range.min) & (rch.ch<=range.max));
 		IF flag=TRUE THEN EXIT;
 		ELSE range:=range.next 
@@ -137,17 +137,18 @@ VAR  branch:RegexParser.Branch;
 					rch := sh.getSym();
 							
 					IF sh.backTrack THEN 
-						WriteMessage("MatchAtom sh.backtrach nach getSym");
+						WriteMessage("MatchAtom sh.backtrack nach getSym");
 						RETURN 
 					END;			
 					
-					Console.WriteString("MatchAtom getSym ch: ");
-					Console.Write(rch.ch); 
-					Console.WriteLn();
+					TextsCP.WriteString("MatchAtom getSym ch: ");
+					TextsCP.Write(rch.ch); 
+					TextsCP.WriteLn();
 						
 					IF atom.range.pos THEN
 						WriteMessage("MatchAtom range.pos vor MatchRange");
 						MatchRange(atom.range,flag); 
+						WriteMessage("MatchAtom range.pos nach MatchRange");
 					ELSE 
 						WriteMessage("MatchAtom vor MatchNegRange");
 						MatchNegRange(atom.range,flag);
@@ -155,7 +156,9 @@ VAR  branch:RegexParser.Branch;
 				
 				END;
 				IF flag THEN 
+					WriteMessage("MatchAtom vor FontMatch");
 					res:= FontMatch(rch,regex);
+					WriteMessage("MatchAtom nach FontMatch");
 					flag:=res=1;					
 				ELSE
 					res:=-1;
@@ -193,8 +196,8 @@ VAR  branch:RegexParser.Branch;
 					atom:=piece.atom;   (*Quantified*)
 					min:=piece.min.val;
 					max:=piece.max.val;
-					Console.WriteString("MatchPiece min");Console.WriteInt(min,2);
-					Console.WriteString("MatchPiece max");Console.WriteInt(max,2);
+					TextsCP.WriteString("MatchPiece min");TextsCP.WriteInt(min,2);
+					TextsCP.WriteString("MatchPiece max");TextsCP.WriteInt(max,2);
 					q:=0;
 					
 					
@@ -310,9 +313,9 @@ BEGIN (*MatchRegex*)
 			
 			*)
 			
-			Console.WriteLn();Console.WriteString("MatchRegex Branch false j:");
-			Console.WriteInt(j,2);Console.WriteString(" ch=");
-			Console.Write(rch.ch);Console.WriteLn();
+			TextsCP.WriteLn();TextsCP.WriteString("MatchRegex Branch false j:");
+			TextsCP.WriteInt(j,2);TextsCP.WriteString(" ch=");
+			TextsCP.Write(rch.ch);TextsCP.WriteLn();
 			(* reset,
 			toDo parsePos*)
 			i:=j;
@@ -359,18 +362,25 @@ BEGIN
 	
 	i:=shared.getSharedText().getParsePos();
 	
-	Console.WriteString("RegexMatching.EditMatch i: ");
-	Console.WriteInt(i,2);
-	Console.WriteLn;
+	TextsCP.WriteString("RegexMatching.EditMatch i: ");
+	TextsCP.WriteInt(i,2);
+	TextsCP.WriteLn;
 	
-	Console.WriteString("RegexMatching.EditMatch TextLen: ");
-	Console.WriteInt(shared.getSharedText().getTextLen(),2);
-	Console.WriteLn;
+	TextsCP.WriteString("RegexMatching.EditMatch TextLen: ");
+	TextsCP.WriteInt(shared.getSharedText().getTextLen(),2);
+	TextsCP.WriteLn;
 	MatchRegex(regex,i,flag);
 	IF sh.backTrack THEN i:=0; 
 		(* reset todo*)
+		TextsCP.WriteString("RegexMatching Return false ");
+		TextsCP.WriteLn;
 		RETURN FALSE; 
 	END;
+	TextsCP.WriteString("RegexMatching Return flag ");
+	IF flag THEN TextsCP.WriteString("True ")
+	ELSE TextsCP.WriteString("False ");
+	END;
+	TextsCP.WriteLn;
 	RETURN flag;
 	
 END EditMatch;

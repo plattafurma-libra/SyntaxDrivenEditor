@@ -5,78 +5,116 @@ Listing:
    3 
    4 IMPORT RTS,Console,texts;
    5 
-   6 TYPE Reader* =RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; jReader:texts.Texts;END;
-   7          Writer*= RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; END;
-   8         
-   9          
-  10 
-  11 PROCEDURE  WriteString*(W:Writer; Str:ARRAY OF CHAR ); 
+   6 TYPE Reader* =RECORD eot*:BOOLEAN;eol*:BOOLEAN;
+   7                                 filename*:ARRAY 80 OF CHAR; jReader:texts.Texts;
+   8                            END;
+   9          Writer*= RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; END;
+  10         
+  11          
   12 
-  13 BEGIN
-  14         Console.WriteString(Str);
-  15 END WriteString;
-  16 
-  17 PROCEDURE  WriteStringLn*(Str:ARRAY OF CHAR ); 
+  13 PROCEDURE  WriteStringWriter*(W:Writer; Str:ARRAY OF CHAR ); 
+  14 
+  15 BEGIN
+  16         Console.WriteString(Str);
+  17 END WriteStringWriter;
   18 
-  19 BEGIN
-  20         Console.WriteString(Str);
-  21         Console.WriteLn();      
-  22 END WriteStringLn;
+  19 PROCEDURE Write*(ch:CHAR);
+  20 BEGIN
+  21         IF texts.Texts.ok THEN Console.Write(ch);END;
+  22 END Write;
   23 
-  24 PROCEDURE WriteInt*(W:Writer; pos:INTEGER; len:INTEGER); 
-  25 BEGIN
-  26         Console.WriteInt(pos,len);
-  27 END WriteInt;
-  28 
-  29 PROCEDURE WriteLn*(W:Writer); 
-  30 BEGIN
-  31         Console.WriteLn();
-  32 END WriteLn;
-  33 
-  34 PROCEDURE OpenWriter*(W:Writer);
-  35 BEGIN
-  36         W.eot:=FALSE;
-  37         Console.WriteString("OpenWriter");Console.WriteLn();
-  38 END OpenWriter;
-  39 
-  40 
-  41 PROCEDURE Pos*(R:Reader):INTEGER;
-  42 BEGIN
-  43         RETURN 0;
-  44 END Pos;
-  45 
-  46 PROCEDURE OpenReader*(VAR R:Reader);
-  47 BEGIN
-  48         Console.WriteString("OpenReader "+R.filename);Console.WriteLn();
-  49         NEW(R.jReader); 
-  50         R.jReader.open(MKSTR(R.filename));R.eot:=FALSE;
-  51 END OpenReader;
-  52 
-  53 PROCEDURE Read*(VAR R:Reader;VAR ch:CHAR);
-  54 BEGIN   
-  55                 (* eof error *)
-  56                 IF R.jReader.eot THEN 
-  57                         Console.WriteString("Texts.Read EOF error for file: "+R.filename);
-  58                         RTS.Throw("Texts.Read EOF error");
-  59                 ELSE
-  60                         ch:=R.jReader.read();
-**** --------------------------------------^
-**** Identifier is not a fieldname of the current type
-**** Current type was <texts.Texts>
-  61                         Console.Write(ch);
-  62                         IF (ch=0DX) OR (ch=0AX) THEN ch:=' ';END;
-  63                         IF R.jReader.eot THEN 
-  64                                 R.eot:=TRUE;    
-  65                                 WriteStringLn("Texts.Read eot set true");
-  66                         END;
-  67                 END;
-  68 END Read;
-  69 
+  24 PROCEDURE  WriteString*(Str:ARRAY OF CHAR ); 
+  25 
+  26 BEGIN
+  27         IF texts.Texts.ok THEN Console.WriteString(Str);END;
+  28 END WriteString;
+  29 
+  30 PROCEDURE  WriteStringLn*(Str:ARRAY OF CHAR ); 
+  31  
+  32 BEGIN
+  33         IF texts.Texts.ok THEN
+  34                 Console.WriteString(Str);
+  35                 Console.WriteLn();
+  36         END;    
+  37 END WriteStringLn;
+  38 
+  39 PROCEDURE WriteInt*(pos:INTEGER; len:INTEGER); 
+  40 BEGIN
+  41         IF texts.Texts.ok THEN Console.WriteInt(pos,len);
+  42         END;
+  43 END WriteInt;
+  44 
+  45 PROCEDURE WriteIntWriter*(W:Writer; pos:INTEGER; len:INTEGER); 
+  46 BEGIN
+  47         Console.WriteInt(pos,len);
+  48         
+  49 END WriteIntWriter;
+  50 
+  51 PROCEDURE WriteLn*(W:Writer); 
+  52 BEGIN
+  53         IF texts.Texts.ok THEN 
+  54                 Console.WriteLn();
+  55         END;
+  56 END WriteLn;
+  57 
+  58 PROCEDURE OpenWriter*(W:Writer);
+  59 BEGIN
+  60         W.eot:=FALSE;
+  61         WriteString("OpenWriter");WriteLn();
+**** This procedure needs parameters---^
+  62         
+  63 END OpenWriter;
+  64 
+  65 
+  66 PROCEDURE Pos*(R:Reader):INTEGER;
+  67 BEGIN
+  68         RETURN 0;
+  69 END Pos;
   70 
-  71 BEGIN (*Auto-generated*)
-  72         
-  73 END TextsCP.
+  71 PROCEDURE OpenReader*(VAR R:Reader);
+  72 BEGIN
+  73         WriteString("OpenReader "+R.filename);WriteLn();
+**** This procedure needs parameters---------------^
+  74         NEW(R.jReader); 
+  75         R.jReader.open(MKSTR(R.filename));R.eot:=FALSE;
+  76 END OpenReader;
+  77 
+  78 PROCEDURE Read*(VAR R:Reader;VAR ch:CHAR);
+  79 BEGIN   
+  80                 (* eof error *)
+  81                 IF R.jReader.eot THEN 
+  82                         WriteString("Texts.Read EOF error for file: "+R.filename);
+  83                         RTS.Throw("Texts.Read EOF error");
+  84                 ELSE
+  85                         ch:=R.jReader.readCharFromFile();
+  86                         Write(ch);
+  87                         IF (ch=0DX) OR (ch=0AX) THEN R.eol:=TRUE;ch:=' ';
+  88                         ELSE R.eol:=FALSE;
+  89                         END;
+  90                         IF R.jReader.eot THEN 
+  91                                 R.eot:=TRUE;    
+  92                                 WriteStringLn("Texts.Read eot set true");
+  93                         END;
+  94                 END;
+  95 END Read;
+  96 
+  97 PROCEDURE Length*(text:ARRAY OF CHAR):INTEGER;
+  98 
+  99 VAR len:INTEGER;
+ 100 
+ 101 BEGIN
+ 102         len:=0;
+ 103         WHILE text[len] # 0X DO
+ 104                 INC(len);
+ 105         END;
+ 106         RETURN len;
+ 107 
+ 108 END Length;
+ 109 
+ 110 BEGIN (*Auto-generated*)
+ 111         
+ 112 END TextsCP.
 
-There were:  1 error, and No warnings
+There were:  2 errors, and No warnings
 
 

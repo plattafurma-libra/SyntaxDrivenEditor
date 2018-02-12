@@ -10,7 +10,7 @@ Listing:
    8 the other attributes can be selected with the Attributes menu
    9 *)
   10 
-  11 IMPORT (*Files,*) FontsFont,Console,texts;
+  11 IMPORT (*Files,*) FontsFont,TextsCP,texts;
   12 
   13 TYPE  CONST (*scanner symbol classes*)
   14     Inval* = 0;         (*invalid symbol*)
@@ -31,7 +31,7 @@ Listing:
   29     PieceDesc = RECORD
   30      (*JR f: Files.File;*)
   31       off, len: LONGINT;
-  32       fnt:FontsFont.Font;
+  32       fnt:FontsFont.FontDesc;
   33       col, voff: INTEGER;
   34       prev, next: Piece
   35     END;
@@ -54,6 +54,7 @@ Listing:
   52     Reader* = (*JR*) POINTER TO EXTENSIBLE RECORD
   53       eot*: BOOLEAN;
   54       fnt*: FontsFont.Font;
+**** ----------------------^ Identifier not known in qualified scope
   55       col*, voff*: INTEGER;
   56       ref: Piece;
   57       org: LONGINT;
@@ -81,6 +82,7 @@ Listing:
   79     Writer* = RECORD
   80       buf*: Buffer;
   81       fnt*: FontsFont.Font;
+**** ----------------------^ Identifier not known in qualified scope
   82       col*, voff*: INTEGER;
   83       (* JR rider: Files.Rider *)
   84     END;     
@@ -101,16 +103,14 @@ Listing:
   99                 PROCEDURE TraversPieceTableForCheck(t:Text);
  100                 VAR piece:Piece;i:INTEGER;
  101                 BEGIN
- 102                         Console.WriteString("TraversPieceTableForCheck");
- 103                         Console.WriteLn();
+ 102                         TextsCP.WriteString("TraversPieceTableForCheck");
+ 103                         TextsCP.WriteLn();
  104                         piece:=t.trailer;
  105                         REPEAT
- 106                                 Console.WriteString(" piece: "); 
+ 106                                 TextsCP.WriteString(" piece: "); 
  107                                 
- 108                                 Console.WriteString(Text.convertLongIntToCharArray(piece.off));
-**** Identifier is not a fieldname of the current type--------^
-**** Current type was <Text>
- 109                                 Console.WriteLn();
+ 108                                 TextsCP.WriteString(texts.Texts.convertLongIntToCharArray(piece.off));
+ 109                                 TextsCP.WriteLn();
  110                                 piece:=piece.next;
  111                         UNTIL piece=t.trailer;
  112                                 
@@ -118,8 +118,8 @@ Listing:
  114                 END TraversPieceTableForCheck;
  115         
  116         BEGIN
- 117                 Console.WriteString("check entry");
- 118                 Console.WriteLn();
+ 117                 TextsCP.WriteString("check entry");
+ 118                 TextsCP.WriteLn();
  119                 NEW(t);
  120                 NEW(sentinel);
  121                 sentinel.off:=0;sentinel.len:=1; sentinel.next:=sentinel;sentinel.prev:=sentinel;
@@ -127,9 +127,9 @@ Listing:
  123                 t.trailer:=sentinel;
  124                 piece:=sentinel;
  125                 FOR i:=0 TO 3 DO
- 126                         Console.WriteString("check make pieces Nr: ");
- 127                         Console.WriteInt(i,3);
- 128                         Console.WriteLn();
+ 126                         TextsCP.WriteString("check make pieces Nr: ");
+ 127                         TextsCP.WriteInt(i,3);
+ 128                         TextsCP.WriteLn();
  129                         NEW(newPiece);
  130                         newPiece.off:=i; (* this is only for check, no sense !!! for further devellopment *)
  131                         newPiece.next:=sentinel;
@@ -684,6 +684,6 @@ Listing:
  680 ***********************************************************************************************************)
  681 
 
-There were:  1 error, and No warnings
+There were:  2 errors, and No warnings
 
 

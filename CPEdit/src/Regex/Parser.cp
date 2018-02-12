@@ -1,7 +1,7 @@
 MODULE RegexParser;
 
 
-IMPORT Console, RTS,FontsFont;
+IMPORT TextsCP, RTS,FontsFont;
 
 
 
@@ -12,7 +12,7 @@ TYPE
 		last:Branch;
 		branch-:Branch;
 		Font*: FontsFont.FontDesc;
-END;
+	END;
 
 Branch*=POINTER TO RECORD
 	alt-:Branch;
@@ -60,30 +60,35 @@ VAR 	ok:BOOLEAN;
 	
 (*--------------------------------Fehler-Meldungen------------------------------------*)
 PROCEDURE Error(id:INTEGER);
+VAR e:RTS.NativeException;
 BEGIN
-	Console.WriteLn(); Console.WriteString(regString); Console.WriteLn();
+	TextsCP.WriteLn(); TextsCP.WriteString(regString); TextsCP.WriteLn();
 	er:=0;
 	FOR er:=0 TO i-1 DO errString[er]:=" " END;
 	errString[i]:="^";
 	errString[i+1]:=0X;
-	Console.WriteString(errString);
-	Console.WriteLn();
+	TextsCP.WriteString(errString);
+	TextsCP.WriteLn();
 	CASE id OF 
-		1: Console.WriteString("Fehler. Erwartet: char oder \ oder . oder [ oder ( "); Console.WriteLn();
+		1: TextsCP.WriteString("Fehler. Erwartet: char oder \ oder . oder [ oder ( "); TextsCP.WriteLn();
     	error:=TRUE;
-		|2: Console.WriteString("Fehler. Keine gueltige Escape-Sequenz"); Console.WriteLn();
+		|2: TextsCP.WriteString("Fehler. Keine gueltige Escape-Sequenz"); TextsCP.WriteLn();
 		error:=TRUE;
-		|3: Console.WriteString("Fehler. Erwartet )");Console.WriteLn();
+		|3: TextsCP.WriteString("Fehler. Erwartet )");TextsCP.WriteLn();
 			error:=TRUE;
-		|4: Console.WriteString("Fehler. Erwartet ]");Console.WriteLn();
+		|4: TextsCP.WriteString("Fehler. Erwartet ]");TextsCP.WriteLn();
 			error:=TRUE;
-		|5: Console.WriteString("Fehler. Keine gueltige CharGroup");Console.WriteLn();
-		|6:Console.WriteString("Default. Noch keine Spezifikation");Console.WriteLn();
+		|5: TextsCP.WriteString("Fehler. Keine gueltige CharGroup");TextsCP.WriteLn();
+		|6:TextsCP.WriteString("Default. Noch keine Spezifikation");TextsCP.WriteLn();
 		error:=TRUE;
 	
 	END;
+	IF error THEN 
+		NEW(e);
+		THROW(e);
+	END;
 END Error;
-(*ELSE Console.WriteLn(); Console.WriteString(regString); Console.WriteLn();
+(*ELSE TextsCP.WriteLn(); TextsCP.WriteString(regString); TextsCP.WriteLn();
 			
 			
 			(*Create Error Mark*)
@@ -92,10 +97,10 @@ END Error;
 			er:=0;
 			FOR er:=0 TO i-2 DO errString[er]:=" " END;
 			errString[i-2]:="^";
-			Console.WriteString(errString);
-			Console.WriteLn();
-			Console.WriteString("Fehler. Erwartet: char oder [ oder (");
-			Console.WriteLn();
+			TextsCP.WriteString(errString);
+			TextsCP.WriteLn();
+			TextsCP.WriteString("Fehler. Erwartet: char oder [ oder (");
+			TextsCP.WriteLn();
 			Interface_Halt.halt.HaltPar(127)	 *)
 
 (*-------------------------------Scanner-Procedures---------------------------------*)
@@ -501,8 +506,7 @@ BEGIN
 	termPiece.id:=2;
 	globalLast.suc:=termPiece;
 	reg.lastPiece:=globalLast;
-	reg.Font:=NIL;
-	
+	reg.Font:=NIL;	
 END InitCreateRegex;
 
 

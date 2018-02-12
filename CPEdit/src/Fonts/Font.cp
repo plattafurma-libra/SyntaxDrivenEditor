@@ -1,6 +1,6 @@
 MODULE FontsFont;
 
-IMPORT texts;
+IMPORT RTS,texts;
 
 (* Font Description: 
 1. Size:(e.g., 12 point vs. 16 point)

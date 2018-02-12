@@ -7,6 +7,6 @@
 	<buildSpec>
 	</buildSpec>
 	<natures>
-		<nature>gpcp_plugin_bk.projectNature</nature>
+		<nature>cpEclipse.projectNature</nature>
 	</natures>
 </projectDescription>

@@ -8,7 +8,7 @@ Vertical offsets such as superscripts or subscripts can be selected....,
 the other attributes can be selected with the Attributes menu
 *)
 
-IMPORT (*Files,*) FontsFont,Console,texts;
+IMPORT (*Files,*) FontsFont,TextsCP,texts;
 
 TYPE  CONST (*scanner symbol classes*)
     Inval* = 0;         (*invalid symbol*)
@@ -29,7 +29,7 @@ TYPE  CONST (*scanner symbol classes*)
     PieceDesc = RECORD
      (*JR f: Files.File;*)
       off, len: LONGINT;
-      fnt:FontsFont.Font;
+      fnt:FontsFont.FontDesc;
       col, voff: INTEGER;
       prev, next: Piece
     END;
@@ -51,7 +51,7 @@ TYPE  CONST (*scanner symbol classes*)
 
     Reader* = (*JR*) POINTER TO EXTENSIBLE RECORD
       eot*: BOOLEAN;
-      fnt*: FontsFont.Font;
+      fnt*: FontsFont.FontDesc;
       col*, voff*: INTEGER;
       ref: Piece;
       org: LONGINT;
@@ -78,7 +78,7 @@ TYPE  CONST (*scanner symbol classes*)
 
     Writer* = RECORD
       buf*: Buffer;
-      fnt*: FontsFont.Font;
+      fnt*: FontsFont.FontDesc;
       col*, voff*: INTEGER;
       (* JR rider: Files.Rider *)
     END;     
@@ -99,14 +99,14 @@ TYPE  CONST (*scanner symbol classes*)
 		PROCEDURE TraversPieceTableForCheck(t:Text);
 		VAR piece:Piece;i:INTEGER;
 		BEGIN
-			Console.WriteString("TraversPieceTableForCheck");
-			Console.WriteLn();
+			TextsCP.WriteString("TraversPieceTableForCheck");
+			TextsCP.WriteLn();
 			piece:=t.trailer;
 			REPEAT
-				Console.WriteString(" piece: "); 
+				TextsCP.WriteString(" piece: "); 
 				
-				Console.WriteString(texts.Texts.convertLongIntToCharArray(piece.off));
-				Console.WriteLn();
+				TextsCP.WriteString(texts.Texts.convertLongIntToCharArray(piece.off));
+				TextsCP.WriteLn();
 				piece:=piece.next;
 			UNTIL piece=t.trailer;
 				
@@ -114,8 +114,8 @@ TYPE  CONST (*scanner symbol classes*)
 		END TraversPieceTableForCheck;
 	
 	BEGIN
-		Console.WriteString("check entry");
-		Console.WriteLn();
+		TextsCP.WriteString("check entry");
+		TextsCP.WriteLn();
 		NEW(t);
 		NEW(sentinel);
 		sentinel.off:=0;sentinel.len:=1; sentinel.next:=sentinel;sentinel.prev:=sentinel;
@@ -123,9 +123,9 @@ TYPE  CONST (*scanner symbol classes*)
 		t.trailer:=sentinel;
 		piece:=sentinel;
 		FOR i:=0 TO 3 DO
-			Console.WriteString("check make pieces Nr: ");
-			Console.WriteInt(i,3);
-			Console.WriteLn();
+			TextsCP.WriteString("check make pieces Nr: ");
+			TextsCP.WriteInt(i,3);
+			TextsCP.WriteLn();
 			NEW(newPiece);
 			newPiece.off:=i; (* this is only for check, no sense !!! for further devellopment *)
 			newPiece.next:=sentinel;

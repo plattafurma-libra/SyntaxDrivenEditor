@@ -3,38 +3,63 @@ MODULE TextsCP;
 
 IMPORT RTS,Console,texts;
 
-TYPE Reader* =RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; jReader:texts.Texts;END;
+TYPE Reader* =RECORD eot*:BOOLEAN;eol*:BOOLEAN;
+				filename*:RTS.NativeString; jReader:texts.Texts;
+			   END;
 	 Writer*= RECORD eot*:BOOLEAN;filename*:ARRAY 80 OF CHAR; END;
 	
 	 
 
-PROCEDURE  WriteString*(W:Writer; Str:ARRAY OF CHAR ); 
+PROCEDURE  WriteStringWriter*(W:Writer; Str:ARRAY OF CHAR ); 
 
 BEGIN
 	Console.WriteString(Str);
+END WriteStringWriter;
+
+PROCEDURE Write*(ch:CHAR);
+BEGIN
+	IF texts.Texts.ok THEN Console.Write(ch);END;
+END Write;
+
+PROCEDURE  WriteString*(Str:ARRAY OF CHAR ); 
+
+BEGIN
+	IF texts.Texts.ok THEN Console.WriteString(Str);END;
 END WriteString;
 
 PROCEDURE  WriteStringLn*(Str:ARRAY OF CHAR ); 
-
+ 
 BEGIN
-	Console.WriteString(Str);
-	Console.WriteLn();	
+	IF texts.Texts.ok THEN
+		Console.WriteString(Str);
+		Console.WriteLn();
+	END;	
 END WriteStringLn;
 
-PROCEDURE WriteInt*(W:Writer; pos:INTEGER; len:INTEGER); 
+PROCEDURE WriteInt*(pos:INTEGER; len:INTEGER); 
 BEGIN
-	Console.WriteInt(pos,len);
+	IF texts.Texts.ok THEN Console.WriteInt(pos,len);
+	END;
 END WriteInt;
 
-PROCEDURE WriteLn*(W:Writer); 
+PROCEDURE WriteIntWriter*(W:Writer; pos:INTEGER; len:INTEGER); 
 BEGIN
-	Console.WriteLn();
+	Console.WriteInt(pos,len);
+	
+END WriteIntWriter;
+
+PROCEDURE WriteLn*(); 
+BEGIN
+	IF texts.Texts.ok THEN 
+		Console.WriteLn();
+	END;
 END WriteLn;
 
 PROCEDURE OpenWriter*(W:Writer);
 BEGIN
 	W.eot:=FALSE;
-	Console.WriteString("OpenWriter");Console.WriteLn();
+	WriteString("OpenWriter");WriteLn();
+	
 END OpenWriter;
 
 
@@ -45,7 +70,7 @@ END Pos;
 
 PROCEDURE OpenReader*(VAR R:Reader);
 BEGIN
-	Console.WriteString("OpenReader "+R.filename);Console.WriteLn();
+	WriteString("OpenReader "+R.filename);WriteLn();
 	NEW(R.jReader);	
 	R.jReader.open(MKSTR(R.filename));R.eot:=FALSE;
 END OpenReader;
@@ -54,12 +79,14 @@ PROCEDURE Read*(VAR R:Reader;VAR ch:CHAR);
 BEGIN	
 		(* eof error *)
 		IF R.jReader.eot THEN 
-			Console.WriteString("Texts.Read EOF error for file: "+R.filename);
+			WriteString("Texts.Read EOF error for file: "+R.filename);
 			RTS.Throw("Texts.Read EOF error");
 		ELSE
 			ch:=R.jReader.readCharFromFile();
-			Console.Write(ch);
-			IF (ch=0DX) OR (ch=0AX) THEN ch:=' ';END;
+			Write(ch);
+			IF (ch=0DX) OR (ch=0AX) THEN R.eol:=TRUE;ch:=' ';
+			ELSE R.eol:=FALSE;
+			END;
 			IF R.jReader.eot THEN 
 				R.eot:=TRUE; 	
 				WriteStringLn("Texts.Read eot set true");
@@ -67,6 +94,18 @@ BEGIN
 		END;
 END Read;
 
+PROCEDURE Length*(text:ARRAY OF CHAR):INTEGER;
+
+VAR len:INTEGER;
+
+BEGIN
+	len:=0;
+	WHILE text[len] # 0X DO
+		INC(len);
+	END;
+	RETURN len;
+
+END Length;
 
 BEGIN (*Auto-generated*)
 	
