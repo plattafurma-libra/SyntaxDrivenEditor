@@ -1,0 +1,138 @@
+Listing:
+
+   1 MODULE RegexReplace;
+   2 
+   3 IMPORT StringLib,TextsCP,RTS,texts;
+   4 CONST nr=200;
+   5 
+   6 TYPE String = ARRAY 40 OF CHAR;
+   7          Replace = RECORD source, dest:String;
+   8          END;
+   9          (*Replaces = ARRAY nr OF Replace;*)
+  10          Replaces = VECTOR OF Replace;
+  11 
+  12 VAR replaces:Replaces;(*index:INTEGER;*)
+  13         nativeStr:RTS.NativeString;
+  14         (*last:INTEGER;*)
+  15 
+  16 PROCEDURE replaceInRegex*(VAR regex:ARRAY OF CHAR);
+  17 
+  18 VAR i,pos:INTEGER;changed,found:BOOLEAN;
+  19 BEGIN
+  20         changed:=TRUE;
+  21         WHILE changed DO
+  22                 changed:=FALSE;
+  23                 i:=0;
+  24                 WHILE i < LEN(replaces) DO
+  25                         StringLib.FindNext(replaces[i].source,regex,0,found,pos);
+  26                         IF found THEN
+  27                                 changed:=TRUE;
+  28                                 (*  *)
+  29                                 TextsCP.WriteString("replaceInRegex: ");
+  30                                 TextsCP.WriteString(regex);
+  31                                 TextsCP.WriteLn;
+  32                                 TextsCP.WriteString(" ");
+  33                                 StringLib.Delete(regex,pos,TextsCP.Length(replaces[i].source));
+  34                                 TextsCP.WriteString("Delete: ");
+  35                                 TextsCP.WriteString(regex);
+  36                                 TextsCP.WriteLn;
+  37                                 StringLib.Insert(replaces[i].dest,pos,regex);   
+  38                                 TextsCP.WriteString(" Insert: ");
+  39                                 TextsCP.WriteString(regex);
+  40                                 TextsCP.WriteLn;
+  41                         END;            
+  42                         INC(i);
+  43                 END (* while i < nr *)
+  44         END (*while changed*)
+  45         
+  46 END replaceInRegex;
+  47 
+  48 PROCEDURE ReadRegex();
+  49 VAR R:TextsCP.Reader; index:INTEGER;ch:CHAR;pos:INTEGER;
+  50         replace:Replace;
+  51 BEGIN
+  52         R.filename:= texts.Texts.regex; 
+  53         TextsCP.OpenReader(R);
+  54         index:=0;ch:=' ';
+  55         WHILE ~R.eot DO
+  56                 (*
+  57                 IF index >nr THEN THROW ("too much regex replaces");
+  58                 END;
+  59                 *)
+  60                 TextsCP.Read(R,ch);
+  61                 (*
+  62                  TextsCP.Write(ch);
+  63                  *)
+  64                 IF R.eol THEN TextsCP.Read(R,ch);
+  65                 END;
+  66                 pos:=0;
+  67                 NEW(replace);
+**** --------------------^ This variable is not of pointer or vector type
+  68                 WHILE ch # ':' DO
+  69                         
+  70                         replace.source[pos]:=ch;
+  71                         INC(pos);
+  72                         IF pos > LEN(replace.source) THEN 
+  73                                 THROW("regex replace too long");
+  74                         END;
+  75                         TextsCP.Read(R,ch);
+  76                         (*TextsCP.Write(ch);*)                  
+  77                 END (* while ch # ':'*);
+  78                 replace.source[pos]:=0X;
+  79                 pos:=0;
+  80                 TextsCP.Read(R,ch);
+  81                 WHILE (~R.eol) & (~R.eot) DO                    
+  82                         replace.dest[pos]:=ch;
+  83                         INC(pos);
+  84                         IF pos > LEN(replace.dest) THEN 
+  85                                 THROW("regex replace too long");
+  86                         END;
+  87                         TextsCP.Read(R,ch);                     
+  88                 END (* while ch # eot , eol*);
+  89                 replace.dest[pos]:=0X;
+  90                 (*
+  91                 INC(index);
+  92                 IF index > nr THEN
+  93                         THROW("regex index too great");
+  94                 END;
+  95                 *)
+  96                 APPEND(replaces,replace);
+  97         END;
+  98         (*
+  99                 last:=index;
+ 100         *)
+ 101 END ReadRegex;
+ 102 
+ 103 PROCEDURE Init*();
+ 104 VAR index:INTEGER;
+ 105 BEGIN
+ 106         TextsCP.WriteString("Regex.Replace Init Entry");
+ 107         TextsCP.WriteLn;
+ 108         ReadRegex();
+ 109         
+ 110         (* unicode *)
+ 111         FOR index:=0 TO LEN(replaces) DO
+ 112                 TextsCP.WriteString("Regex.replaces[index].source ");
+ 113                 TextsCP.WriteString(replaces[index].source);
+ 114                 TextsCP.WriteLn;
+ 115                 IF (replaces[index].source[0] = '\') &
+ 116                 (replaces[index].source[1] ='u') THEN
+ 117                         nativeStr:=MKSTR(replaces[index].source);
+ 118                         replaces[index].dest[0]:=
+ 119                         texts.Texts.convertUnicode(nativeStr);
+ 120                         TextsCP.WriteString(" unicode: ");
+ 121                         TextsCP.WriteString(replaces[index].dest);                      
+ 122                         TextsCP.WriteLn;
+ 123                         replaces[index].dest[1]:=0X;(*terminator*)
+ 124                 END;            
+ 125         END;
+ 126         
+ 127 END Init;
+ 128          
+ 129 BEGIN (* read from file? *)
+ 130         
+ 131 END RegexReplace.
+
+There were:  1 error, and No warnings
+
+

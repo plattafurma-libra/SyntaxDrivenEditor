@@ -1,0 +1,86 @@
+Listing:
+
+   1 MODULE SyntaxTree;
+   2 
+   3 IMPORT RTS,texts;
+   4 CONST NameLen*=32;
+   5 
+   6 TYPE TreeNode* = POINTER TO ABSTRACT RECORD                                     
+   7                                         name: ARRAY NameLen OF CHAR;
+   8                                         suc*:TreeNode;(*for NonTerminal and for Terminal*)
+   9                                  END;
+  10                                  
+  11 NonTerminalTreeNode* = POINTER TO RECORD(TreeNode)
+  12                                         child*:TreeNode;
+  13                                  END;
+  14                                  
+  15 TerminalTreeNode* = POINTER TO RECORD(TreeNode)
+  16                                                         startPos,endPos:INTEGER;
+  17                                                  END;
+  18                                                  
+  19 
+  20 PROCEDURE (treeNode:TreeNode) nodename*():RTS.NativeString,NEW;
+  21 
+  22 
+  23 BEGIN
+  24         RETURN MKSTR(treeNode.name$);
+  25         
+  26 END nodename;
+  27 
+  28 PROCEDURE (treeNode:TreeNode) nodeName*(VAR name:ARRAY OF CHAR),NEW;
+  29 BEGIN
+  30         name:= treeNode.name$;
+  31 END nodeName;
+  32 
+  33 PROCEDURE (treeNode:TreeNode) getChild*():TreeNode,NEW;
+  34 BEGIN
+  35         IF treeNode IS NonTerminalTreeNode THEN
+  36                 RETURN treeNode(NonTerminalTreeNode).child;
+  37         ELSE RETURN NIL;
+  38         END;
+  39 END getChild;
+  40 
+  41 PROCEDURE (treeNode:TerminalTreeNode) getStartPos*():INTEGER,NEW;
+  42 BEGIN
+  43         RETURN treeNode.startPos;
+  44 END getStartPos;
+  45 
+  46 PROCEDURE (treeNode:TerminalTreeNode) getEndPos*():INTEGER,NEW;
+  47 BEGIN
+  48         RETURN treeNode.endPos;
+  49 END getEndPos;
+  50 
+  51 PROCEDURE (treeNode:TreeNode) isTerminalTreeNode*():BOOLEAN,NEW;
+  52 BEGIN
+  53         RETURN treeNode IS TerminalTreeNode;
+  54 END isTerminalTreeNode;
+  55 
+  56 PROCEDURE NonTerminalTreeNodeFactory*(name:ARRAY OF CHAR):
+  57 NonTerminalTreeNode;
+  58 
+  59 VAR node:NonTerminalTreeNode;
+  60 BEGIN
+  61         NEW(node);node.child:=NIL; node.suc:=NIL;node.name:=name$;
+  62         RETURN node;
+  63 END NonTerminalTreeNodeFactory;
+  64 
+  65 PROCEDURE TerminalTreeNodeFactory*
+  66 (name:ARRAY OF CHAR;sharedText:Texts;start,end:INTEGER):
+**** -------------------------------^ Identifier not known in this scope
+  67 TerminalTreeNode;
+  68 
+  69 VAR node:TerminalTreeNode;
+  70 BEGIN
+  71         NEW(node);node.suc:=NIL;node.name:=name$;
+  72         node.startPos:=start;node.endPos:=end;
+  73         
+  74         RETURN node;
+  75 END TerminalTreeNodeFactory;
+  76  
+  77 BEGIN (*Auto-generated*)
+  78 
+  79 END SyntaxTree.
+
+There were:  1 error, and No warnings
+
+

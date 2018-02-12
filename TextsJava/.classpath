@@ -3,8 +3,9 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="lib" path="/CPEdit/bin"/>
-	<classpathentry kind="lib" path="C:/Users/rols/eclipse/plugins/org.eclipse.swt.win32.win32.x86_64_3.106.0.v20170608-0516.jar"/>
-	<classpathentry kind="lib" path="C:/Users/rols/eclipse/configuration/org.eclipse.osgi/1000/0/.cp/data/gpcp-JVM-v1.3.16"/>
+	<classpathentry kind="var" path="SWT_LIB"/>
+	<classpathentry kind="lib" path="gpcp-JVM"/>
+	<classpathentry kind="lib" path="C:/Users/rols/eclipse/configuration/org.eclipse.osgi/1016/0/.cp/data/gpcp-JVM-v1.3.16"/>
 	<classpathentry kind="lib" path="C:/Users/rols/git/SyntaxDrivenEditor/CPEdit/bin"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

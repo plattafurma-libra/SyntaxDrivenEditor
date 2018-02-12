@@ -1,8 +1,10 @@
 package texts;
 
+import CP.Ebnf.Ebnf;
+
 public class Shared {
 
-		
+	private static int count=0;	
 	private static boolean available=false;
 	private static int caretPos=0;
 	
@@ -11,7 +13,7 @@ public class Shared {
 	
 	//private int internalCaretPos=0;
 	
-	public static int maxPosInParse=0;  /* maxPosition of chars read. is used to indicate position
+	public static int maxPosInParse;  /* maxPosition of chars read. is used to indicate position
 				of error in input   */ 
 	public boolean backTrack=false;
 	// parsePos is position of sign processed in EBNF parser;
@@ -36,24 +38,27 @@ public class Shared {
 	// get new chars edited in draft current block
 	
 	public void setFromSWTText(String textStr,int caretPosFromText,int len){
-		// System.out.println("Shared.charFromSWTText ch "+ch);
+		// if(Texts.ok) if(Texts.ok) System.out.println("Shared.charFromSWTText ch "+ch);
 		// backtrack for insert
 		if (!this.backTrack) {
 			if (this.sharedText.getParsePos() > caretPosFromText) {
+				//18-01-24
+				maxPosInParse=this.sharedText.getParsePos();
 				this.backTrack=true;
 				// parsePos is reset in EBNF parse at the end of backtrack
-				System.out.println("Shared.setFromSWTText backTrack true");
+				if(Texts.ok) System.out.println("Shared.setFromSWTText backTrack true");
 			}
 		}
 		
-		//System.out.println("Shared.setFromSWTText parsePos: "+
+		//if(Texts.ok) System.out.println("Shared.setFromSWTText parsePos: "+
 		//this.sharedText.getParsePos());
 		this.sharedText.setTextAsCharArray(textStr);
 		//this.internalCaretPos=caretPos;
-		System.out.println("Shared.setFromSWTText textStr: "+textStr+
+		if(Texts.ok) System.out.println("Shared.setFromSWTText textStr: "+textStr+
 				" parsePos: "+this.sharedText.getParsePos()+ " caretPosFromText: "+
 				caretPosFromText);
 		// backTrack is set to false after backtrack in ebnf.parse
+		
 		if(this.backTrack) this.available = true;
 		else {			
 			this.available=caretPosFromText >= this.sharedText.getParsePos();
@@ -69,7 +74,7 @@ public class Shared {
 	/******neu s.o.
 	public void setCharFromJson(RichChar richChar){
 		// 
-		System.out.println("Shared.charFromSWTText ch "+richChar.ch);
+		if(Texts.ok) System.out.println("Shared.charFromSWTText ch "+richChar.ch);
 		this.sharedText.setTextCharAtPos(richChar.ch, sharedText.getTextLen());
 		this.sharedText.incTextLen();
 		this.available=sharedText.getTextLen()>sharedText.getTextPos();	
@@ -84,12 +89,12 @@ public class Shared {
 	***********************************************************************************/
 	
 	public synchronized RichChar getSym(){
-		System.out.println("Shared.getSym entry");
+		if(Texts.ok) System.out.println("Shared.getSym entry");
 		if (caretPos>sharedText.getParsePos()) available=true;
 		try {
-			System.out.println("Shared.getSym nach try vor while");
+			if(Texts.ok) System.out.println("Shared.getSym nach try vor while");
 			while (!available) Thread.sleep(100);
-			System.out.println("Shared.getSym pos "+
+			if(Texts.ok) System.out.println("Shared.getSym pos "+
 			this.sharedText.getParsePos());
 		}
 		catch (InterruptedException e){
@@ -104,17 +109,30 @@ public class Shared {
 		//***************************end interface draft
 		// sharedText.text[sharedText.getTextPos()];
 		//this.sharedText.incTextPos();
-		System.out.println("getSym rch: "+ch.ch);
+		if(Texts.ok) System.out.println("getSym rch: "+ch.ch);
+		count=0;
+		
+		Node node=new Node();
+		if (Ebnf.root==null)if(Texts.ok) System.out.println("Ebnf.root=null");
+		SyntaxTree.walker(node,Ebnf.root,null);
+		
 		return ch;
 		
 	}
 
 	
 	
-	public boolean errorCase(int maxPosInParse) {
-		System.out.println("errorCase caretPos: "+caretPos
+	public synchronized boolean errorCase(int maxPosInParse) {
+		if (count==0)
+		if(Texts.ok) System.out.println("errorCase caretPos: "+caretPos
 		+ " maxPosInParse: "+maxPosInParse);
-		
+		count=1;
+		/*if (getSym()!=null) { 
+				this.sharedText.setParsePos(this.sharedText.getParsePos()-1);
+				
+		if(Texts.ok) System.out.println("errorCase Exit caretPos: "+caretPos);
+		}
+		*/	
 		return (caretPos>maxPosInParse);
 	}
 	
